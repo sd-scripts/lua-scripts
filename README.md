@@ -8,7 +8,7 @@ Usefull lua scripts for GTA SA:MP
 [Requirements] MoonLoader 0.25+; MoonImGui; Encoding; SampEvents.
 [LINKS] https://vk.cc/bXnnBk | https://www.blast.hk/threads/76299/
 
-"Digits Separator" for any servers. / by STK
-[EN] Separator of numbers by digits. Simplifies the appearance of large numbers.
-[RU] Разделитель чисел по разрядам. Упрощает вид больших чисел.
+"Digits Separator" for any servers. / by STK\n
+[EN] Separator of numbers by digits. Simplifies the appearance of large numbers.\n
+[RU] Разделитель чисел по разрядам. Упрощает вид больших чисел.\n
 [LINKS] ..
