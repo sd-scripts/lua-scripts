@@ -1,6 +1,6 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.0.0')
+script_version('1.0.1')
  
 local sampev = require 'samp.events'
 local imgui = require 'imgui'
@@ -190,7 +190,7 @@ function imgui.OnDrawFrame()
             imgui.CenterText('Список авто:')
             for i, v in ipairs(cars) do
                 imgui.ColButton(cars[i]['spawn'])  
-                if imgui.Button(v['name'], imgui.ImVec2(130,20)) then 
+                if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20)) then 
                     carname = v['name']; car_info = {}; carid = i; sampSendChat('/cars'); sampSendDialogResponse(162, 1, cars[carid]['id'], -1); state_spawn = cars[carid]['spawn']
                 end    
                 imgui.PopStyleColor(3)
