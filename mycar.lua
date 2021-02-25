@@ -613,7 +613,7 @@ function imgui.OnDrawFrame()
 
         imgui.SameLine()
         
-        imgui.BeginChild('##panel_2', imgui.ImVec2(347, 410), true)
+        imgui.BeginChild('##panel_2', imgui.ImVec2(347, 410), true) 
             if info_update then
                 aboutmod = false
                 imgui.CenterTextColoredRGB('{4169E1}Äîñòóïíî íîâîå îáíîâëåíèå v' ..data.name.. '.'); imgui.Separator()
