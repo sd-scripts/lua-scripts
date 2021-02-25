@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.1.0')
-script_version_number(3)
+script_version('1.1.1')
+script_version_number(4)
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -35,17 +35,13 @@ local cfg = inicfg.load({
 		fixmycar = false,
         enter = true,
         unloading = false,
-        save = true
+        save = false
     },
     HotKey = {
-        lock1 = 76,
-        lock2 = nil,
-        keys1 = 75,
-        keys2 = nil,
-        main1 = 18,
-        main2 = 77,
-        interaction1 = 88,
-        interaction2 = nil
+        lock = "[76]",
+        keys = "[75]",
+        main = "[18,77]",
+        interaction = "[88]"
     }
 }, 'MyCar')
 
@@ -56,25 +52,24 @@ local CheckBox = {
     ['save'] = imgui.ImBool(cfg.CheckBox.save)
 }
 
-local ActiveMenu = {
-	v = {cfg.HotKey.main1, cfg.HotKey.main2}
+local ActiveMenus = {
+	v = decodeJson(cfg.HotKey.main)
 }
 local ActiveKey = {
-	v = {cfg.HotKey.keys1, cfg.HotKey.keys2}
+	v = decodeJson(cfg.HotKey.keys)
 }
 local ActiveLock = {
-	v = {cfg.HotKey.lock1, cfg.HotKey.lock2}
+	v = decodeJson(cfg.HotKey.lock)
 }
 local ActiveInteraction = {
-	v = {cfg.HotKey.interaction1}
+	v = decodeJson(cfg.HotKey.interaction)
 }
-local tLastKeys = {
 
-}
+local tLastKeys = {}
 
 function settings.load(table, dir)
     if not doesFileExist(dir) then
-        local f = io.open(dir, 'w+'); local suc = f:write(encodeJson(table)); f:close()
+        local f = io.open(dir, 'w+'); local suc = f:write(encodeJson({[nickname .. '\\' .. ip] = table})); f:close()
         if suc then return table end
         return table
     else
@@ -85,7 +80,7 @@ function settings.load(table, dir)
 end
 
 function settings.save(table, dir)
-    local f = io.open(dir, 'w+'); local suc = f:write(encodeJson(table));
+    local f = io.open(dir, 'w+'); local suc = f:write(encodeJson({[nickname .. '\\' .. ip] = table}));
     f:close()
     return table
 end
@@ -103,7 +98,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         for v in string.gmatch(text, '[^\n]+') do
             if v:match('%{FFFFFF%} %w+') then
                 t = {
-                    name = v:match('%{FFFFFF%} (.+)%('),
+                    name = v:match('%{FFFFFF%}%s+(.+)%('),
                     id = i,
                     spawn = true
                 }
@@ -212,19 +207,26 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         for v in string.gmatch(text, '[^\n]+') do
             if v:match('%[Не загружено%]') then
                 t = {
-                    name = v:match('%{F05959%}%[Не загружено%]%{FFFFFF%} (%w+)'),
+                    name = v:match('%{F05959%}%[Не загружено%]%{FFFFFF%}%s+(%w+)'),
                     id = i,
                     spawn = false
                 }
+            elseif v:match('%[Штрафстоянка%]') then
+                t = {
+                    name = v:match('%{......%}%[Штрафстоянка%]%{FFFFFF%}%s+(%w+)'),
+                    id = i,
+                    spawn = false,
+                    pfine = true
+                }
             elseif v:match('%{FFFFFF%} %w+') then
                 t = {
-                    name = v:match('%{FFFFFF%} (.+)%('),
+                    name = v:match('%{FFFFFF%}%s+(.+)%('),
                     id = i,
                     spawn = true
                 }
             else
                 t = {
-                    name = v:match('(.+)%('),
+                    name = v:match('%s+(.+)%('),
                     id = i,
                     spawn = true
                 }
@@ -286,11 +288,13 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 if check_old or unloading_cars then
                     sampSendDialogResponse(163, 1, 10, 1)
                 end
+                if working then
+                    working = false; carname = cars[carid]['name']; state_spawn = cars[carid]['spawn']; sampSendChat('/cars'); sampSendDialogResponse(162, 1, cars[carid]['id'], -1)
+                end
                 if not state_spawn then
                     carid = nil
                 end
             else
-
                 local l = 0
                 for v in string.gmatch(text, '[^\n]+') do
                     if l == 0 then --закрыть/открыть
@@ -434,23 +438,30 @@ end
 function main()
     if not isSampLoaded() or not isSampfuncsLoaded() then return end
     while not isSampAvailable() do wait(100) end
-    while not sampIsLocalPlayerSpawned() do wait(120) end
 
     local update_file = getWorkingDirectory() .. '\\mycar.json';
     downloadUrlToFile('https://raw.githubusercontent.com/sd-scripts/lua-scripts/main/mycar.json', getWorkingDirectory()..'\\mycar.json', function(id, status, p1, p2)
         if status == 6 then
+            while not doesFileExist(update_file) do wait(0) end
             local f = io.open(update_file, 'a+'); 
             data = decodeJson(f:read('a*'));
             f:close();
             os.remove(update_file)
         end
     end)
+    while not data do wait(0) end
 
     if not doesFileExist('moonloader/config/MyCar.ini') then
         if inicfg.save(cfg, 'MyCar.ini') then sampfuncsLog('[MyCar] Создан файл конфигурации: MyCar.ini') end
     end
+    
+    while not sampIsLocalPlayerSpawned() do wait(120) end
 
-    old_cars = settings.load({}, getWorkingDirectory().. '\\config\\mycar.json')
+    nickname = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(playerPed)))
+    ip, port = sampGetCurrentServerAddress()
+
+    local load = settings.load({}, getWorkingDirectory().. '\\config\\mycar.json')
+    if load then old_cars = load[nickname .. '\\' .. ip] end
 
     if cfg.CheckBox.save and #old_cars > 0 then
         check_old = true; sampSendChat('/cars')
@@ -461,7 +472,7 @@ function main()
     end
 
     if lrkeys then
-        bindMenu = rkeys.registerHotKey(ActiveMenu.v, true, function ()
+        bindMenu = rkeys.registerHotKey(ActiveMenus.v, true, function ()
             if not main_window.v then sampSendChat('/cars') else main_window.v = false end   
         end)
         bindKey = rkeys.registerHotKey(ActiveKey.v, true, function ()
@@ -495,7 +506,6 @@ function main()
 end
 
 function target.check()
-
     local result, ped = getCharPlayerIsTargeting(player)
     if result and not target.state then 
         local _, pID = sampGetPlayerIdByCharHandle(ped)
@@ -515,7 +525,6 @@ function target.check()
             end
         end
     end
-    
 end
 
 function onWindowMessage(msg, wparam, lparam)
@@ -590,7 +599,7 @@ function imgui.OnDrawFrame()
             for i, v in ipairs(cars) do
                 if not aboutmod and not info_update then
                     imgui.ColButton(cars[i]['spawn'])
-                    if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20)) and not work then 
+                    if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20)) and not work then
                         carname = v['name']; car_info = {}; carid = i; sampSendChat(command); sampSendDialogResponse(id_dialog, 1, cars[carid]['id'], -1); state_spawn = cars[carid]['spawn']
                     end    
                     imgui.PopStyleColor(3)
@@ -648,31 +657,28 @@ function imgui.OnDrawFrame()
 				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При нажатии на кнопку "Заспавнить" будет перед спавном прописываться команда "/fixmycar [id транспорта]".\nИСПОЛЬЗОВАТЬ НА СВОЙ СТРАХ И РИСК.')) imgui.EndTooltip() end
 				
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
-                if imadd.HotKey("##menu", ActiveMenu, tLastKeys, 80) then
-                    rkeys.changeHotKey(bindMenu, ActiveMenu.v)
-					cfg.HotKey.main1 = ActiveMenu.v[1]
-                    cfg.HotKey.main2 = ActiveMenu.v[2]
+                if imadd.HotKey("##menu", ActiveMenus, tLastKeys, 80) then
+                    rkeys.changeHotKey(bindMenu, ActiveMenus.v)
+                    cfg.HotKey.main = encodeJson(ActiveMenus.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
                 imgui.SameLine(); imgui.Text(u8' -   открыть меню скрипта (/cars)')
                 if imadd.HotKey("##lock", ActiveLock, tLastKeys, 80) then
                     rkeys.changeHotKey(bindLock, ActiveLock.v)
-					cfg.HotKey.lock1 = ActiveLock.v[1]
-                    cfg.HotKey.lock2 = ActiveLock.v[2]
+					cfg.HotKey.lock = encodeJson(ActiveLock.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
                 imgui.SameLine(); imgui.Text(u8' -   открыть/закрыть транспорт (/lock)')
                 if imadd.HotKey("##key", ActiveKey, tLastKeys, 80) then
                     rkeys.changeHotKey(bindKey, ActiveKey.v)
-					cfg.HotKey.keys1 = ActiveKey.v[1]
-                    cfg.HotKey.keys2 = ActiveKey.v[2]
+					cfg.HotKey.keys = encodeJson(ActiveKey.v)
 					inicfg.save(cfg, 'MyCar.ini')
 				end
                 imgui.SameLine(); imgui.Text(u8' -   вставить/достать ключи (/key)')
                 if imadd.HotKey("##interaction", ActiveInteraction, tLastKeys, 80) then
                     rkeys.changeHotKey(bindInteraction, ActiveInteraction.v)
-					cfg.HotKey.interaction1 = ActiveInteraction.v[1]
-                    cfg.HotKey.interaction2 = ActiveInteraction.v[2]
+                    if ActiveInteraction.v[2] then ActiveInteraction.v = tLastKeys.v end
+					cfg.HotKey.interaction = encodeJson(ActiveInteraction.v)
                     inicfg.save(cfg, 'MyCar.ini')
 				end
                 imgui.SameLine(); imgui.Text(u8' -   меню взаимодействия')
@@ -818,7 +824,7 @@ function imgui.OnDrawFrame()
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Изменить режим езды [Sport, Comfort].\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
                 imgui.SameLine()
                 imgui.ColButton(abs_state)
-                if imgui.Button(u8'ABS', imgui.ImVec2(79,20)) then 
+                if imgui.Button(u8'ABS', imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
                     state = 9
                     work = true
                     sampSendChat(command) 
@@ -874,15 +880,20 @@ function imgui.OnDrawFrame()
                 imgui.SetCursorPosY(180)
                 if carid then
                     if not work then
-                        imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
-                        if imgui.Button(u8'Загрузить', imgui.ImVec2(335,30)) then
-                            work = true
-                            sampSendChat('/cars')
+                        if cars[carid].pfine then
+                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} на штрафстоянке.')
+                        else
+                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
+                            if imgui.Button(u8'Загрузить', imgui.ImVec2(335,30)) then
+                                work = true
+                                sampSendChat('/cars')
+                                working = true
+                            end
                         end
                     else
                         imgui.SetCursorPosY(150)
                         imgui.SetCursorPosX(165)
-                        Spinner('##spinner', 12, 3, imgui.GetColorU32(imgui.GetStyle().Colors[imgui.Col.ButtonHovered]))
+                        imadd.Spinner('##spinner', 12, 3, imgui.GetColorU32(imgui.GetStyle().Colors[imgui.Col.ButtonHovered]))
                         imgui.CenterTextColoredRGB('Подождите. Идёт загрузка транспорта {ffff00}' ..carname.. '{ffffff}.')
                         if imgui.Button(u8'Стоп', imgui.ImVec2(335,30)) then
                             work = false   
@@ -893,7 +904,7 @@ function imgui.OnDrawFrame()
                 end
             end
         imgui.EndChild()
-        if data.version ~= thisScript().version_num then 
+        if data.version > thisScript().version_num then 
             imgui.TextColoredRGB('{808080}  Доступно обновление!')
             if imgui.IsItemClicked() then
                 info_update = true
@@ -976,33 +987,6 @@ function apply_custom_style()
     colors[clr.PlotHistogramHovered]   = ImVec4(1.00, 0.18, 0.18, 1.00);
     colors[clr.TextSelectedBg]         = ImVec4(1.00, 0.32, 0.32, 1.00);
     colors[clr.ModalWindowDarkening]   = ImVec4(0.26, 0.26, 0.26, 0.60);
-end
- 
-function Spinner(label, radius, thickness, color)
-    local style = imgui.GetStyle()
-    local pos = imgui.GetCursorScreenPos()
-    local size = imgui.ImVec2(radius * 2, (radius + style.FramePadding.y) * 2)
- 
-    imgui.Dummy(imgui.ImVec2(size.x + style.ItemSpacing.x, size.y))
- 
-    local DrawList = imgui.GetWindowDrawList()
-    DrawList:PathClear()
- 
-    local num_segments = 30
-    local start = math.abs(math.sin(imgui.GetTime() * 1.8) * (num_segments - 5))
- 
-    local a_min = 3.14 * 2.0 * start / num_segments
-    local a_max = 3.14 * 2.0 * (num_segments - 3) / num_segments
- 
-    local centre = imgui.ImVec2(pos.x + radius, pos.y + radius + style.FramePadding.y)
- 
-    for i = 0, num_segments do
-        local a = a_min + (i / num_segments) * (a_max - a_min)
-        DrawList:PathLineTo(imgui.ImVec2(centre.x + math.cos(a + imgui.GetTime() * 8) * radius, centre.y + math.sin(a + imgui.GetTime() * 8) * radius))
-    end
- 
-    DrawList:PathStroke(color, false, thickness)
-    return true
 end
 
 function onScriptTerminate(LuaScript, quitGame)
