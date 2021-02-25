@@ -14,7 +14,7 @@ local lrkeys, rkeys 	= pcall(require, 'rkeys')
  
 encoding.default = 'CP1251'
 u8 = encoding.UTF8
- 
+
 local cars = {}
 local old_cars = {}
 local car_info = {}
@@ -113,29 +113,29 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             i = i + 1
         end
         
-        command = '/keys'; id_dialog = 1162; cars_info = 'Чужой транспорт'
+        command = '/keys'; id_dialog = 1162; cars_info = 'Г—ГіГ¦Г®Г© ГІГ°Г Г­Г±ГЇГ®Г°ГІ'
         main_window.v = true
         sampSendDialogResponse(id, 0, nil, nil)
         return false
     end
     if id == 1163 then
-        if title:find('{BFBBBA}Инструменты для .+ %(%d+%)') then
+        if title:find('{BFBBBA}Г€Г­Г±ГІГ°ГіГ¬ГҐГ­ГІГ» Г¤Г«Гї .+ %(%d+%)') then
             if work then 
                 work = false
             else
                 local l = 0
                 for v in string.gmatch(text, '[^\n]+') do
-                    if l == 0 then --закрыть/открыть
-                        if v:match('%{......%}Закрыть') then door_state = true else door_state = false end
+                    if l == 0 then --Г§Г ГЄГ°Г»ГІГј/Г®ГІГЄГ°Г»ГІГј
+                        if v:match('%{......%}Г‡Г ГЄГ°Г»ГІГј') then door_state = true else door_state = false end
                     end
-                    if l == 1 then --ключи
-                        if v:match('%{......%}Вставить ключи') then key_state = false else key_state = true end
+                    if l == 1 then --ГЄГ«ГѕГ·ГЁ
+                        if v:match('%{......%}Г‚Г±ГІГ ГўГЁГІГј ГЄГ«ГѕГ·ГЁ') then key_state = false else key_state = true end
                     end
-                    if l == 7 then --режим езды
-                        if v:match('%{......%}Режим езды %[ %{......%}Sport%{......%} %]') then drive_state = false else drive_state = true end
+                    if l == 7 then --Г°ГҐГ¦ГЁГ¬ ГҐГ§Г¤Г»
+                        if v:match('%{......%}ГђГҐГ¦ГЁГ¬ ГҐГ§Г¤Г» %[ %{......%}Sport%{......%} %]') then drive_state = false else drive_state = true end
                     end
                     if l == 8 then --ABS
-                        if v:match('Система ABS  %[ %{......%}ВКЛ%{......%} %]') then abs_state = true else abs_state = false end
+                        if v:match('Г‘ГЁГ±ГІГҐГ¬Г  ABS  %[ %{......%}Г‚ГЉГ‹%{......%} %]') then abs_state = true else abs_state = false end
                     end
                     l = l + 1
                 end
@@ -205,15 +205,15 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         local t = {}
         cars = {}
         for v in string.gmatch(text, '[^\n]+') do
-            if v:match('%[Не загружено%]') then
+            if v:match('%[ГЌГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­Г®%]') then
                 t = {
-                    name = v:match('%{F05959%}%[Не загружено%]%{FFFFFF%}%s+(%w+)'),
+                    name = v:match('%{F05959%}%[ГЌГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­Г®%]%{FFFFFF%}%s+(%w+)'),
                     id = i,
                     spawn = false
                 }
-            elseif v:match('%[Штрафстоянка%]') then
+            elseif v:match('%[ГГІГ°Г ГґГ±ГІГ®ГїГ­ГЄГ %]') then
                 t = {
-                    name = v:match('%{......%}%[Штрафстоянка%]%{FFFFFF%}%s+(%w+)'),
+                    name = v:match('%{......%}%[ГГІГ°Г ГґГ±ГІГ®ГїГ­ГЄГ %]%{FFFFFF%}%s+(%w+)'),
                     id = i,
                     spawn = false,
                     pfine = true
@@ -240,7 +240,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 list[v.name .. v.id] = v.spawn
             end
             
-            for k, v in pairs(old_cars) do -- выгрузка авто
+            for k, v in pairs(old_cars) do -- ГўГ»ГЈГ°ГіГ§ГЄГ  Г ГўГІГ®
                 if list[v.name .. v.id] ~= v.spawn then
                     if not v.spawn then
                         work = true
@@ -249,7 +249,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 end
             end
 
-            for k, v in pairs(old_cars) do -- загрузка авто
+            for k, v in pairs(old_cars) do -- Г§Г ГЈГ°ГіГ§ГЄГ  Г ГўГІГ®
                 if list[v.name .. v.id] ~= v.spawn then
                     sampSendDialogResponse(162, 1, v.id, -1)
                     if v.spawn then work = true end
@@ -272,7 +272,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             end     
         else
             settings.save(cars, getWorkingDirectory().. '\\config\\mycar.json')
-            command = '/cars'; id_dialog = 162; cars_info = 'Мой транспорт'
+            command = '/cars'; id_dialog = 162; cars_info = 'ГЊГ®Г© ГІГ°Г Г­Г±ГЇГ®Г°ГІ'
             if not target_window.v then main_window.v = true end
         end
 
@@ -281,7 +281,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
  
     end
     if id == 163 then
-        if title:find('{BFBBBA}Инструменты для .+ %(%d+%)') then
+        if title:find('{BFBBBA}Г€Г­Г±ГІГ°ГіГ¬ГҐГ­ГІГ» Г¤Г«Гї .+ %(%d+%)') then
 
             if work then 
                 work = false
@@ -297,17 +297,17 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             else
                 local l = 0
                 for v in string.gmatch(text, '[^\n]+') do
-                    if l == 0 then --закрыть/открыть
-                        if v:match('%{......%}Закрыть') then door_state = true else door_state = false end
+                    if l == 0 then --Г§Г ГЄГ°Г»ГІГј/Г®ГІГЄГ°Г»ГІГј
+                        if v:match('%{......%}Г‡Г ГЄГ°Г»ГІГј') then door_state = true else door_state = false end
                     end
-                    if l == 1 then --ключи
-                        if v:match('%{......%}Вставить ключи') then key_state = false else key_state = true end
+                    if l == 1 then --ГЄГ«ГѕГ·ГЁ
+                        if v:match('%{......%}Г‚Г±ГІГ ГўГЁГІГј ГЄГ«ГѕГ·ГЁ') then key_state = false else key_state = true end
                     end
-                    if l == 7 then --режим езды
-                        if v:match('%{......%}Режим езды %[ %{......%}Sport%{......%} %]') then drive_state = false else drive_state = true end
+                    if l == 7 then --Г°ГҐГ¦ГЁГ¬ ГҐГ§Г¤Г»
+                        if v:match('%{......%}ГђГҐГ¦ГЁГ¬ ГҐГ§Г¤Г» %[ %{......%}Sport%{......%} %]') then drive_state = false else drive_state = true end
                     end
                     if l == 8 then --ABS
-                        if v:match('Система ABS  %[ %{......%}ВКЛ%{......%} %]') then abs_state = true else abs_state = false end
+                        if v:match('Г‘ГЁГ±ГІГҐГ¬Г  ABS  %[ %{......%}Г‚ГЉГ‹%{......%} %]') then abs_state = true else abs_state = false end
                     end
                     l = l + 1
                 end
@@ -382,24 +382,24 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         parkingstate = nil
         return false
     end
-    if id == 0 and style == 0 and title == '{BFBBBA}Информация' and (main_window.v or target_window.v) then
+    if id == 0 and style == 0 and title == '{BFBBBA}Г€Г­ГґГ®Г°Г¬Г Г¶ГЁГї' and (main_window.v or target_window.v) then
         car_info = {}
         local t = {
-            carname = text:match('%{FFFFFF%}Транспорт%: %{73B461%}(.+)%{FFFFFF%}.+Владелец'),  
-            owner = text:match('Владелец: {......}(%w+_%w+){......}'),
-            intermediary = text:match('Посредник%: %{73B461%}(%D+)%{FFFFFF%}'),
-            mileage = text:match('Пробег%: %{73B461%}(%d+ км.)%{FFFFFF%}'),
-            tax = text:match('Налог%: %{73B461%}(%d+)%{FFFFFF%} %/ 150 000'),
-            fine = text:match('Штраф%: %{73B461%}(%d+)%{FFFFFF%} %/ 80 000'),
-            recovery_penalty = text:match('Штраф за восстановление%: %{73B461%}($%d+)%{FFFFFF%}'),
-            price = text:match('Цена покупки с госа%:%s%{......%}($.+%d+).+Номер'),
-            car_number = text:match('Номер автомобиля%:.+{......}(.+){......}.+Здоровье'),
-            car_health_min = text:match('Здоровье автомобиля%: %{F57449%}(%d+.%d)/%d+.%d%{FFFFFF%}'),
-            car_health_max = text:match('Здоровье автомобиля%: %{F57449%}%d+.%d/(%d+.%d)%{FFFFFF%}'),
-            state = text:match('Состояние авто%: %{F57449%}(%d+)/100%{FFFFFF%}'),
-            oil = text:match('Состояния масла%: %{F57449%}%{......%}(%X+)%{FFFFFF%}'),
-            insurance_damage = text:match('Страховка %(на повреждение%)%: %{......%}(%X+)%{FFFFFF%}'),
-            insurance_meeting = text:match('Страховка %(на слёт%)%: %{......%}.+(до [%d%:%s%.]+).+%{FFFFFF%}'),
+            carname = text:match('%{FFFFFF%}Г’Г°Г Г­Г±ГЇГ®Г°ГІ%: %{73B461%}(.+)%{FFFFFF%}.+Г‚Г«Г Г¤ГҐГ«ГҐГ¶'),  
+            owner = text:match('Г‚Г«Г Г¤ГҐГ«ГҐГ¶: {......}(%w+_%w+){......}'),
+            intermediary = text:match('ГЏГ®Г±Г°ГҐГ¤Г­ГЁГЄ%: %{73B461%}(%D+)%{FFFFFF%}'),
+            mileage = text:match('ГЏГ°Г®ГЎГҐГЈ%: %{73B461%}(%d+ ГЄГ¬.)%{FFFFFF%}'),
+            tax = text:match('ГЌГ Г«Г®ГЈ%: %{73B461%}(%d+)%{FFFFFF%} %/ 150 000'),
+            fine = text:match('ГГІГ°Г Гґ%: %{73B461%}(%d+)%{FFFFFF%} %/ 80 000'),
+            recovery_penalty = text:match('ГГІГ°Г Гґ Г§Г  ГўГ®Г±Г±ГІГ Г­Г®ГўГ«ГҐГ­ГЁГҐ%: %{73B461%}($%d+)%{FFFFFF%}'),
+            price = text:match('Г–ГҐГ­Г  ГЇГ®ГЄГіГЇГЄГЁ Г± ГЈГ®Г±Г %:%s%{......%}($.+%d+).+ГЌГ®Г¬ГҐГ°'),
+            car_number = text:match('ГЌГ®Г¬ГҐГ° Г ГўГІГ®Г¬Г®ГЎГЁГ«Гї%:.+{......}(.+){......}.+Г‡Г¤Г®Г°Г®ГўГјГҐ'),
+            car_health_min = text:match('Г‡Г¤Г®Г°Г®ГўГјГҐ Г ГўГІГ®Г¬Г®ГЎГЁГ«Гї%: %{F57449%}(%d+.%d)/%d+.%d%{FFFFFF%}'),
+            car_health_max = text:match('Г‡Г¤Г®Г°Г®ГўГјГҐ Г ГўГІГ®Г¬Г®ГЎГЁГ«Гї%: %{F57449%}%d+.%d/(%d+.%d)%{FFFFFF%}'),
+            state = text:match('Г‘Г®Г±ГІГ®ГїГ­ГЁГҐ Г ГўГІГ®%: %{F57449%}(%d+)/100%{FFFFFF%}'),
+            oil = text:match('Г‘Г®Г±ГІГ®ГїГ­ГЁГї Г¬Г Г±Г«Г %: %{F57449%}%{......%}(%X+)%{FFFFFF%}'),
+            insurance_damage = text:match('Г‘ГІГ°Г ГµГ®ГўГЄГ  %(Г­Г  ГЇГ®ГўГ°ГҐГ¦Г¤ГҐГ­ГЁГҐ%)%: %{......%}(%X+)%{FFFFFF%}'),
+            insurance_meeting = text:match('Г‘ГІГ°Г ГµГ®ГўГЄГ  %(Г­Г  Г±Г«ВёГІ%)%: %{......%}.+(Г¤Г® [%d%:%s%.]+).+%{FFFFFF%}'),
         }
         table.insert(car_info, t)
         servercarid = car_info[1].carname:match('%w+%[(%d+)%]')
@@ -417,22 +417,22 @@ function sampev.onDisplayGameText(style, time, text)
 end
  
 function sampev.onServerMessage(color,text)
-    if text:find('вытащил%(а%) ключи из замка зажигания') or text:find('вставил%(а%) ключи в замок зажигания') then key_state = not key_state end
-    if text:find('Загрузить транспорт не удалось') and work then return false end
-	if text:find('%[Ошибка%] %{FFFFFF%}В данном гараже уже припарковано 1 %/ 1, а это авто сейчас находится в гараже.') then
+    if text:find('ГўГ»ГІГ Г№ГЁГ«%(Г %) ГЄГ«ГѕГ·ГЁ ГЁГ§ Г§Г Г¬ГЄГ  Г§Г Г¦ГЁГЈГ Г­ГЁГї') or text:find('ГўГ±ГІГ ГўГЁГ«%(Г %) ГЄГ«ГѕГ·ГЁ Гў Г§Г Г¬Г®ГЄ Г§Г Г¦ГЁГЈГ Г­ГЁГї') then key_state = not key_state end
+    if text:find('Г‡Г ГЈГ°ГіГ§ГЁГІГј ГІГ°Г Г­Г±ГЇГ®Г°ГІ Г­ГҐ ГіГ¤Г Г«Г®Г±Гј') and work then return false end
+	if text:find('%[ГЋГёГЁГЎГЄГ %] %{FFFFFF%}Г‚ Г¤Г Г­Г­Г®Г¬ ГЈГ Г°Г Г¦ГҐ ГіГ¦ГҐ ГЇГ°ГЁГЇГ Г°ГЄГ®ГўГ Г­Г® 1 %/ 1, Г  ГЅГІГ® Г ГўГІГ® Г±ГҐГ©Г·Г Г± Г­Г ГµГ®Г¤ГЁГІГ±Гї Гў ГЈГ Г°Г Г¦ГҐ.') then
 		if check_old or unloading_cars then check_old = false; unloading_cars = false; work = false return false end
 	end
-	if text:find('Ключи не вставлены') and CheckBox['enter'].v then
+	if text:find('ГЉГ«ГѕГ·ГЁ Г­ГҐ ГўГ±ГІГ ГўГ«ГҐГ­Г»') and CheckBox['enter'].v then
         sampSendChat('/key'); sampSendChat('/engine') 
         return false 
     end
-    if text:find('Нельзя загружать более двух авто одновременно, сначало выгрузите одно авто') and work then
+    if text:find('ГЌГҐГ«ГјГ§Гї Г§Г ГЈГ°ГіГ¦Г ГІГј ГЎГ®Г«ГҐГҐ Г¤ГўГіГµ Г ГўГІГ® Г®Г¤Г­Г®ГўГ°ГҐГ¬ГҐГ­Г­Г®, Г±Г­Г Г·Г Г«Г® ГўГ»ГЈГ°ГіГ§ГЁГІГҐ Г®Г¤Г­Г® Г ГўГІГ®') and work then
         work = false
         reloadmod = true
         return false
     end
 
-    if text:find('смотрит тех. паспорт.') then return false end
+    if text:find('Г±Г¬Г®ГІГ°ГЁГІ ГІГҐГµ. ГЇГ Г±ГЇГ®Г°ГІ.') then return false end
 end
  
 function main()
@@ -452,7 +452,7 @@ function main()
     while not data do wait(0) end
 
     if not doesFileExist('moonloader/config/MyCar.ini') then
-        if inicfg.save(cfg, 'MyCar.ini') then sampfuncsLog('[MyCar] Создан файл конфигурации: MyCar.ini') end
+        if inicfg.save(cfg, 'MyCar.ini') then sampfuncsLog('[MyCar] Г‘Г®Г§Г¤Г Г­ ГґГ Г©Г« ГЄГ®Г­ГґГЁГЈГіГ°Г Г¶ГЁГЁ: MyCar.ini') end
     end
     
     while not sampIsLocalPlayerSpawned() do wait(120) end
@@ -554,32 +554,32 @@ function imgui.OnDrawFrame()
                 end
             end
             imgui.SetCursorPosY(10)
-            imgui.CenterTextColoredRGB('{808080}Меню взаимодействия')
+            imgui.CenterTextColoredRGB('{808080}ГЊГҐГ­Гѕ ГўГ§Г ГЁГ¬Г®Г¤ГҐГ©Г±ГІГўГЁГї')
             imgui.Separator()
             imgui.CenterTextColoredRGB('{FFD848}' ..target.i.name.. '[' ..target.i.id.. ']')
             if uf == 0 then
                 imgui.SetCursorPosY(105)
-                imgui.CenterTextColoredRGB('{808080}У вас нет загруженных т/с')
+                imgui.CenterTextColoredRGB('{808080}Г“ ГўГ Г± Г­ГҐГІ Г§Г ГЈГ°ГіГ¦ГҐГ­Г­Г»Гµ ГІ/Г±')
                 imgui.SetCursorPosY(175)
-                if imgui.Button(u8'Загрузить', imgui.ImVec2(175,20)) then target_window.v = false; sampSendChat('/cars') end        
+                if imgui.Button(u8'Г‡Г ГЈГ°ГіГ§ГЁГІГј', imgui.ImVec2(175,20)) then target_window.v = false; sampSendChat('/cars') end        
             end
         else
             imgui.SetCursorPosY(10)
-            imgui.CenterTextColoredRGB('{808080}Меню взаимодействия')
+            imgui.CenterTextColoredRGB('{808080}ГЊГҐГ­Гѕ ГўГ§Г ГЁГ¬Г®Г¤ГҐГ©Г±ГІГўГЁГї')
             imgui.Separator()
             imgui.CenterTextColoredRGB('{FFD848}' ..target.i.name.. '[' ..target.i.id.. ']')
             imgui.SetCursorPosY(60)
-            if imgui.Button(u8'Передать ключи', imgui.ImVec2(175,25)) then sampSendChat('/givekey ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
-            if imgui.Button(u8'Показать паспорт', imgui.ImVec2(175,25)) then sampSendChat('/carpass ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
+            if imgui.Button(u8'ГЏГҐГ°ГҐГ¤Г ГІГј ГЄГ«ГѕГ·ГЁ', imgui.ImVec2(175,25)) then sampSendChat('/givekey ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
+            if imgui.Button(u8'ГЏГ®ГЄГ Г§Г ГІГј ГЇГ Г±ГЇГ®Г°ГІ', imgui.ImVec2(175,25)) then sampSendChat('/carpass ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
             imgui.SetCursorPosY(157)
-            imgui.CenterTextColoredRGB('{808080}Выбранное т/c: {73B461}' ..choose_car)
+            imgui.CenterTextColoredRGB('{808080}Г‚Г»ГЎГ°Г Г­Г­Г®ГҐ ГІ/c: {73B461}' ..choose_car)
             imgui.ColorButton(64, 105, 15, 52, 84, 12, 77, 125, 17)
-            if imgui.Button(u8'Назад', imgui.ImVec2(175,20)) then choose_act = false; choose_car = '' end
+            if imgui.Button(u8'ГЌГ Г§Г Г¤', imgui.ImVec2(175,20)) then choose_act = false; choose_car = '' end
             imgui.PopStyleColor(3)
         end
         imgui.SetCursorPosY(200)
 		imgui.ColorButton(112, 112, 112, 99, 99, 99, 130, 130, 130)
-        if imgui.Button(u8'Закрыть', imgui.ImVec2(175,20)) then target_window.v = false; choose_act = false; choose_car = '' end
+        if imgui.Button(u8'Г‡Г ГЄГ°Г»ГІГј', imgui.ImVec2(175,20)) then target_window.v = false; choose_act = false; choose_car = '' end
         imgui.PopStyleColor(3)
         imgui.End()
     end
@@ -595,7 +595,7 @@ function imgui.OnDrawFrame()
         imgui.SetNextWindowSize(imgui.ImVec2(515, 465))
         imgui.Begin(u8('MyCar | ' ..cars_info),  main_window, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoCollapse)
         imgui.BeginChild('##panel_1', imgui.ImVec2(145, 410), true)
-            imgui.CenterText('Список авто:')
+            imgui.CenterText('Г‘ГЇГЁГ±Г®ГЄ Г ГўГІГ®:')
             for i, v in ipairs(cars) do
                 if not aboutmod and not info_update then
                     imgui.ColButton(cars[i]['spawn'])
@@ -616,8 +616,8 @@ function imgui.OnDrawFrame()
         imgui.BeginChild('##panel_2', imgui.ImVec2(347, 410), true)
             if info_update then
                 aboutmod = false
-                imgui.CenterTextColoredRGB('{4169E1}Доступно новое обновление v' ..data.name.. '.'); imgui.Separator()
-                imgui.CenterTextColoredRGB('{73B461}Полный список изменений:')
+                imgui.CenterTextColoredRGB('{4169E1}Г„Г®Г±ГІГіГЇГ­Г® Г­Г®ГўГ®ГҐ Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ v' ..data.name.. '.'); imgui.Separator()
+                imgui.CenterTextColoredRGB('{73B461}ГЏГ®Г«Г­Г»Г© Г±ГЇГЁГ±Г®ГЄ ГЁГ§Г¬ГҐГ­ГҐГ­ГЁГ©:')
                 imgui.BeginChild('##update', imgui.ImVec2(330, 335), true)
                     local text = data.info
                     if text then
@@ -626,70 +626,70 @@ function imgui.OnDrawFrame()
                         end
                     else
                         imgui.SetCursorPosY(160)
-                        imgui.CenterTextColoredRGB('{DCDCDC}Не удалось загрузить информацию об обновлении.')
+                        imgui.CenterTextColoredRGB('{DCDCDC}ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЈГ°ГіГ§ГЁГІГј ГЁГ­ГґГ®Г°Г¬Г Г¶ГЁГѕ Г®ГЎ Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГЁ.')
                     end
                 imgui.EndChild()
 				imgui.ColorButton(35, 84, 25, 30, 70, 20, 48, 115, 34)
-                if imgui.Button(u8'Скачать', imgui.ImVec2(163,20)) then os.execute('explorer "https://www.blast.hk/threads/76299/"') end
+                if imgui.Button(u8'Г‘ГЄГ Г·Г ГІГј', imgui.ImVec2(163,20)) then os.execute('explorer "https://www.blast.hk/threads/76299/"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере, где вы сможете скачать скрипт.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г Гў Г­Г  ГЄГ­Г®ГЇГЄГі, Гі ГўГ Г± Г®ГІГЄГ°Г®ГҐГІГ±Гї Г±Г±Г»Г«ГЄГ  Гў ГЎГ°Г ГіГ§ГҐГ°ГҐ, ГЈГ¤ГҐ ГўГ» Г±Г¬Г®Г¦ГҐГІГҐ Г±ГЄГ Г·Г ГІГј Г±ГЄГ°ГЁГЇГІ.')) imgui.EndTooltip() end
                 imgui.SameLine()
-                if imgui.Button(u8'Назад', imgui.ImVec2(163, 20)) then info_update = false end
+                if imgui.Button(u8'ГЌГ Г§Г Г¤', imgui.ImVec2(163, 20)) then info_update = false end
             end
             if aboutmod then
                 info_update = false
-                imgui.CenterTextColoredRGB('{6495ED}Дополнительные функции'); imgui.Separator()
-                if imgui.Checkbox(u8'Автоматически доставать ключи при выходе из т/c', CheckBox['enter']) then cfg.CheckBox.enter = CheckBox['enter'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас будет доставать ключи при выходе из транспортного средства,\nа также их вставлять при попытке завести двигатель.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Выгружать весь транспорт при подключении', CheckBox['unloading']) then
+                imgui.CenterTextColoredRGB('{6495ED}Г„Г®ГЇГ®Г«Г­ГЁГІГҐГ«ГјГ­Г»ГҐ ГґГіГ­ГЄГ¶ГЁГЁ'); imgui.Separator()
+                if imgui.Checkbox(u8'ГЂГўГІГ®Г¬Г ГІГЁГ·ГҐГ±ГЄГЁ Г¤Г®Г±ГІГ ГўГ ГІГј ГЄГ«ГѕГ·ГЁ ГЇГ°ГЁ ГўГ»ГµГ®Г¤ГҐ ГЁГ§ ГІ/c', CheckBox['enter']) then cfg.CheckBox.enter = CheckBox['enter'].v; inicfg.save(cfg, 'MyCar.ini') end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г‘ГЄГ°ГЁГЇГІ Г§Г  ГўГ Г± ГЎГіГ¤ГҐГІ Г¤Г®Г±ГІГ ГўГ ГІГј ГЄГ«ГѕГ·ГЁ ГЇГ°ГЁ ГўГ»ГµГ®Г¤ГҐ ГЁГ§ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г®ГЈГ® Г±Г°ГҐГ¤Г±ГІГўГ ,\nГ  ГІГ ГЄГ¦ГҐ ГЁГµ ГўГ±ГІГ ГўГ«ГїГІГј ГЇГ°ГЁ ГЇГ®ГЇГ»ГІГЄГҐ Г§Г ГўГҐГ±ГІГЁ Г¤ГўГЁГЈГ ГІГҐГ«Гј.')) imgui.EndTooltip() end
+                if imgui.Checkbox(u8'Г‚Г»ГЈГ°ГіГ¦Г ГІГј ГўГҐГ±Гј ГІГ°Г Г­Г±ГЇГ®Г°ГІ ГЇГ°ГЁ ГЇГ®Г¤ГЄГ«ГѕГ·ГҐГ­ГЁГЁ', CheckBox['unloading']) then
                     if CheckBox['unloading'].v then cfg.CheckBox.save = false; CheckBox['save'].v = false end
                     cfg.CheckBox.unloading = CheckBox['unloading'].v
                     inicfg.save(cfg, 'MyCar.ini') 
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При входе в игру скрипт выгрузит все ваши транспортные средства с сервера.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Сохранять статус загрузки/выгрузки транспорта', CheckBox['save']) then 
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЏГ°ГЁ ГўГµГ®Г¤ГҐ Гў ГЁГЈГ°Гі Г±ГЄГ°ГЁГЇГІ ГўГ»ГЈГ°ГіГ§ГЁГІ ГўГ±ГҐ ГўГ ГёГЁ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г»ГҐ Г±Г°ГҐГ¤Г±ГІГўГ  Г± Г±ГҐГ°ГўГҐГ°Г .')) imgui.EndTooltip() end
+                if imgui.Checkbox(u8'Г‘Г®ГµГ°Г Г­ГїГІГј Г±ГІГ ГІГіГ± Г§Г ГЈГ°ГіГ§ГЄГЁ/ГўГ»ГЈГ°ГіГ§ГЄГЁ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ ', CheckBox['save']) then 
                     if CheckBox['save'].v then cfg.CheckBox.unloading = false; CheckBox['unloading'].v = false end
                     cfg.CheckBox.save = CheckBox['save'].v 
                     inicfg.save(cfg, 'MyCar.ini')
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт будет запоминать, какие у вас транспортные средства были загружены,\nа при заходе в игру вернёт статус, как это было в последний раз.')) imgui.EndTooltip() end
-				if imgui.Checkbox(u8'Использовать команду "/fixmycar" перед спавном', CheckBox['fixmycar']) then cfg.CheckBox.fixmycar = CheckBox['fixmycar'].v; inicfg.save(cfg, 'MyCar.ini') end
-				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При нажатии на кнопку "Заспавнить" будет перед спавном прописываться команда "/fixmycar [id транспорта]".\nИСПОЛЬЗОВАТЬ НА СВОЙ СТРАХ И РИСК.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г‘ГЄГ°ГЁГЇГІ ГЎГіГ¤ГҐГІ Г§Г ГЇГ®Г¬ГЁГ­Г ГІГј, ГЄГ ГЄГЁГҐ Гі ГўГ Г± ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г»ГҐ Г±Г°ГҐГ¤Г±ГІГўГ  ГЎГ»Г«ГЁ Г§Г ГЈГ°ГіГ¦ГҐГ­Г»,\nГ  ГЇГ°ГЁ Г§Г ГµГ®Г¤ГҐ Гў ГЁГЈГ°Гі ГўГҐГ°Г­ВёГІ Г±ГІГ ГІГіГ±, ГЄГ ГЄ ГЅГІГ® ГЎГ»Г«Г® Гў ГЇГ®Г±Г«ГҐГ¤Г­ГЁГ© Г°Г Г§.')) imgui.EndTooltip() end
+				if imgui.Checkbox(u8'Г€Г±ГЇГ®Г«ГјГ§Г®ГўГ ГІГј ГЄГ®Г¬Г Г­Г¤Гі "/fixmycar" ГЇГҐГ°ГҐГ¤ Г±ГЇГ ГўГ­Г®Г¬', CheckBox['fixmycar']) then cfg.CheckBox.fixmycar = CheckBox['fixmycar'].v; inicfg.save(cfg, 'MyCar.ini') end
+				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЏГ°ГЁ Г­Г Г¦Г ГІГЁГЁ Г­Г  ГЄГ­Г®ГЇГЄГі "Г‡Г Г±ГЇГ ГўГ­ГЁГІГј" ГЎГіГ¤ГҐГІ ГЇГҐГ°ГҐГ¤ Г±ГЇГ ГўГ­Г®Г¬ ГЇГ°Г®ГЇГЁГ±Г»ГўГ ГІГјГ±Гї ГЄГ®Г¬Г Г­Г¤Г  "/fixmycar [id ГІГ°Г Г­Г±ГЇГ®Г°ГІГ ]".\nГ€Г‘ГЏГЋГ‹ГњГ‡ГЋГ‚ГЂГ’Гњ ГЌГЂ Г‘Г‚ГЋГ‰ Г‘Г’ГђГЂГ• Г€ ГђГ€Г‘ГЉ.')) imgui.EndTooltip() end
 				
-                imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
+                imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}ГѓГ®Г°ГїГ·ГЁГҐ ГЄГ«Г ГўГЁГёГЁ'); imgui.Separator()
                 if imadd.HotKey("##menu", ActiveMenus, tLastKeys, 80) then
                     rkeys.changeHotKey(bindMenu, ActiveMenus.v)
                     cfg.HotKey.main = encodeJson(ActiveMenus.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
-                imgui.SameLine(); imgui.Text(u8' -   открыть меню скрипта (/cars)')
+                imgui.SameLine(); imgui.Text(u8' -   Г®ГІГЄГ°Г»ГІГј Г¬ГҐГ­Гѕ Г±ГЄГ°ГЁГЇГІГ  (/cars)')
                 if imadd.HotKey("##lock", ActiveLock, tLastKeys, 80) then
                     rkeys.changeHotKey(bindLock, ActiveLock.v)
 					cfg.HotKey.lock = encodeJson(ActiveLock.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
-                imgui.SameLine(); imgui.Text(u8' -   открыть/закрыть транспорт (/lock)')
+                imgui.SameLine(); imgui.Text(u8' -   Г®ГІГЄГ°Г»ГІГј/Г§Г ГЄГ°Г»ГІГј ГІГ°Г Г­Г±ГЇГ®Г°ГІ (/lock)')
                 if imadd.HotKey("##key", ActiveKey, tLastKeys, 80) then
                     rkeys.changeHotKey(bindKey, ActiveKey.v)
 					cfg.HotKey.keys = encodeJson(ActiveKey.v)
 					inicfg.save(cfg, 'MyCar.ini')
 				end
-                imgui.SameLine(); imgui.Text(u8' -   вставить/достать ключи (/key)')
+                imgui.SameLine(); imgui.Text(u8' -   ГўГ±ГІГ ГўГЁГІГј/Г¤Г®Г±ГІГ ГІГј ГЄГ«ГѕГ·ГЁ (/key)')
                 if imadd.HotKey("##interaction", ActiveInteraction, tLastKeys, 80) then
                     rkeys.changeHotKey(bindInteraction, ActiveInteraction.v)
                     if ActiveInteraction.v[2] then ActiveInteraction.v = tLastKeys.v end
 					cfg.HotKey.interaction = encodeJson(ActiveInteraction.v)
                     inicfg.save(cfg, 'MyCar.ini')
 				end
-                imgui.SameLine(); imgui.Text(u8' -   меню взаимодействия')
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Необходимо будет выделить игрока нажатием ПКМ.')) imgui.EndTooltip() end
+                imgui.SameLine(); imgui.Text(u8' -   Г¬ГҐГ­Гѕ ГўГ§Г ГЁГ¬Г®Г¤ГҐГ©Г±ГІГўГЁГї')
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГҐГ®ГЎГµГ®Г¤ГЁГ¬Г® ГЎГіГ¤ГҐГІ ГўГ»Г¤ГҐГ«ГЁГІГј ГЁГЈГ°Г®ГЄГ  Г­Г Г¦Г ГІГЁГҐГ¬ ГЏГЉГЊ.')) imgui.EndTooltip() end
 				
 				imgui.SetCursorPosY(315)
-                imgui.NewLine(); imgui.CenterTextColoredRGB('{A9A9A9}Обратная связь:'); imgui.Separator()
+                imgui.NewLine(); imgui.CenterTextColoredRGB('{A9A9A9}ГЋГЎГ°Г ГІГ­Г Гї Г±ГўГїГ§Гј:'); imgui.Separator()
 				imgui.ColorButton(11, 88, 230, 10, 80, 209, 12, 94, 245)
-                if imgui.Button(u8'ВКонтакте', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.com/sd_scripts"') end
+                if imgui.Button(u8'Г‚ГЉГ®Г­ГІГ ГЄГІГҐ', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.com/sd_scripts"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере нашей группы ВКонтакте.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г Гў Г­Г  ГЄГ­Г®ГЇГЄГі, Гі ГўГ Г± Г®ГІГЄГ°Г®ГҐГІГ±Гї Г±Г±Г»Г«ГЄГ  Гў ГЎГ°Г ГіГ§ГҐГ°ГҐ Г­Г ГёГҐГ© ГЈГ°ГіГЇГЇГ» Г‚ГЉГ®Г­ГІГ ГЄГІГҐ.')) imgui.EndTooltip() end
                 imgui.SameLine()
                 
                 imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.19, 0.22, 0.26, 1.0))
@@ -697,26 +697,26 @@ function imgui.OnDrawFrame()
                 imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.11, 0.14, 0.18, 1.0))
                 if imgui.Button('BlastHack', imgui.ImVec2(107,20)) then os.execute('explorer "https://www.blast.hk/threads/76299/"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере темы на портале BlastHack.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г Гў Г­Г  ГЄГ­Г®ГЇГЄГі, Гі ГўГ Г± Г®ГІГЄГ°Г®ГҐГІГ±Гї Г±Г±Г»Г«ГЄГ  Гў ГЎГ°Г ГіГ§ГҐГ°ГҐ ГІГҐГ¬Г» Г­Г  ГЇГ®Г°ГІГ Г«ГҐ BlastHack.')) imgui.EndTooltip() end
 				imgui.SameLine()
 				imgui.ColorButton(35, 84, 25, 30, 70, 20, 48, 115, 34)
-				if imgui.Button(u8'Техподдержка', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.me/sd_scripts"') end
+				if imgui.Button(u8'Г’ГҐГµГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГ ', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.me/sd_scripts"') end
 				imgui.PopStyleColor(3)
-				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, вы попадёте в техподдержку (личные сообщения нашей группы ВКонтакте).')) imgui.EndTooltip() end
+				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г Гў Г­Г  ГЄГ­Г®ГЇГЄГі, ГўГ» ГЇГ®ГЇГ Г¤ВёГІГҐ Гў ГІГҐГµГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГі (Г«ГЁГ·Г­Г»ГҐ Г±Г®Г®ГЎГ№ГҐГ­ГЁГї Г­Г ГёГҐГ© ГЈГ°ГіГЇГЇГ» Г‚ГЉГ®Г­ГІГ ГЄГІГҐ).')) imgui.EndTooltip() end
 				imgui.Separator()
 				
                 imgui.SetCursorPosY(385)
 				imgui.ColorButton(120, 34, 34, 107, 30, 30, 135, 38, 38)
-                if imgui.Button(u8'Выключить скрипт', imgui.ImVec2(165,20)) then thisScript():unload() end
+                if imgui.Button(u8'Г‚Г»ГЄГ«ГѕГ·ГЁГІГј Г±ГЄГ°ГЁГЇГІ', imgui.ImVec2(165,20)) then thisScript():unload() end
 				imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Выключает скрипт до перезагрузки (CTRL+R) или перезахода в игру.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г‚Г»ГЄГ«ГѕГ·Г ГҐГІ Г±ГЄГ°ГЁГЇГІ Г¤Г® ГЇГҐГ°ГҐГ§Г ГЈГ°ГіГ§ГЄГЁ (CTRL+R) ГЁГ«ГЁ ГЇГҐГ°ГҐГ§Г ГµГ®Г¤Г  Гў ГЁГЈГ°Гі.')) imgui.EndTooltip() end
                 imgui.SameLine()
-                if imgui.Button(u8'Закрыть', imgui.ImVec2(165,20)) then aboutmod = false end
+                if imgui.Button(u8'Г‡Г ГЄГ°Г»ГІГј', imgui.ImVec2(165,20)) then aboutmod = false end
             end
             if reloadmod then
                 imgui.SetCursorPosY(135)
-                imgui.CenterTextColoredRGB('{808080}Вы можете иметь лишь два загруженных т/c.')
-                imgui.CenterTextColoredRGB('{808080}Выберите, какой транспорт выгрузить взамен:')
+                imgui.CenterTextColoredRGB('{808080}Г‚Г» Г¬Г®Г¦ГҐГІГҐ ГЁГ¬ГҐГІГј Г«ГЁГёГј Г¤ГўГ  Г§Г ГЈГ°ГіГ¦ГҐГ­Г­Г»Гµ ГІ/c.')
+                imgui.CenterTextColoredRGB('{808080}Г‚Г»ГЎГҐГ°ГЁГІГҐ, ГЄГ ГЄГ®Г© ГІГ°Г Г­Г±ГЇГ®Г°ГІ ГўГ»ГЈГ°ГіГ§ГЁГІГј ГўГ§Г Г¬ГҐГ­:')
                 for i, v in ipairs(cars) do
                     if cars[i]['spawn'] then
                         if imgui.Button(v['name'], imgui.ImVec2(335,25)) then
@@ -726,20 +726,20 @@ function imgui.OnDrawFrame()
                 end
                 imgui.SetCursorPosX(223)
                 imgui.ColorButton(112, 112, 112, 99, 99, 99, 130, 130, 130)
-                if imgui.Button(u8'Назад', imgui.ImVec2(120, 20)) then reloadmod = false end
+                if imgui.Button(u8'ГЌГ Г§Г Г¤', imgui.ImVec2(120, 20)) then reloadmod = false end
                 imgui.PopStyleColor(3)
             end
             if parkingmod then
                 imgui.SetCursorPosY(160)
-				imgui.CenterTextColoredRGB('{808080}Выберите, где припарковать ваш транспорт.')
-                if imgui.Button(u8'Припарковать в этом месте', imgui.ImVec2(335,25)) then
+				imgui.CenterTextColoredRGB('{808080}Г‚Г»ГЎГҐГ°ГЁГІГҐ, ГЈГ¤ГҐ ГЇГ°ГЁГЇГ Г°ГЄГ®ГўГ ГІГј ГўГ Гё ГІГ°Г Г­Г±ГЇГ®Г°ГІ.')
+                if imgui.Button(u8'ГЏГ°ГЁГЇГ Г°ГЄГ®ГўГ ГІГј Гў ГЅГІГ®Г¬ Г¬ГҐГ±ГІГҐ', imgui.ImVec2(335,25)) then
                     parkingmod = false
                     parkingstate = 0
                     state = 4
                     work = true
                     sampSendChat(command)
                 end
-                if imgui.Button(u8'Вернуть на стандартную парковку', imgui.ImVec2(335,25)) then
+                if imgui.Button(u8'Г‚ГҐГ°Г­ГіГІГј Г­Г  Г±ГІГ Г­Г¤Г Г°ГІГ­ГіГѕ ГЇГ Г°ГЄГ®ГўГЄГі', imgui.ImVec2(335,25)) then
                     parkingmod = false
                     parkingstate = 1
                     state = 4
@@ -748,52 +748,52 @@ function imgui.OnDrawFrame()
                 end
                 imgui.SetCursorPosX(223)
 				imgui.ColorButton(112, 112, 112, 99, 99, 99, 130, 130, 130)
-                if imgui.Button(u8'Назад', imgui.ImVec2(120, 20)) then parkingmod = false end
+                if imgui.Button(u8'ГЌГ Г§Г Г¤', imgui.ImVec2(120, 20)) then parkingmod = false end
                 imgui.PopStyleColor(3)
             end
             if state_spawn and not parkingmod and not reloadmod and not aboutmod and not info_update then
                 imgui.BeginChild('##columns', imgui.ImVec2(330, 315), true)
-                    imgui.CenterTextColoredRGB('Паспорт транспорта {C0C0C0}' ..tostring(car_info[1] and car_info[1].carname or ''))  
+                    imgui.CenterTextColoredRGB('ГЏГ Г±ГЇГ®Г°ГІ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ  {C0C0C0}' ..tostring(car_info[1] and car_info[1].carname or ''))  
                     imgui.Separator()
                     imgui.Columns(2)
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Владелец'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г‚Г«Г Г¤ГҐГ«ГҐГ¶'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].owner or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Посредник'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГЏГ®Г±Г°ГҐГ¤Г­ГЁГЄ'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].intermediary or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Пробег'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГЏГ°Г®ГЎГҐГЈ'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].mileage or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Налог'); imgui.NextColumn()
-                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].tax.. ' из 150000' or '--'))); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГЌГ Г«Г®ГЈ'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].tax.. ' ГЁГ§ 150000' or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Штраф'); imgui.NextColumn()
-                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].fine.. ' из 80000' or '--'))); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГГІГ°Г Гґ'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].fine.. ' ГЁГ§ 80000' or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Штраф за восстановление'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГГІГ°Г Гґ Г§Г  ГўГ®Г±Г±ГІГ Г­Г®ГўГ«ГҐГ­ГЁГҐ'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].recovery_penalty or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Государственная стоимость'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГѓГ®Г±ГіГ¤Г Г°Г±ГІГўГҐГ­Г­Г Гї Г±ГІГ®ГЁГ¬Г®Г±ГІГј'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].price or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Государственный номер'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'ГѓГ®Г±ГіГ¤Г Г°Г±ГІГўГҐГ­Г­Г»Г© Г­Г®Г¬ГҐГ°'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].car_number or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Здоровье'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г‡Г¤Г®Г°Г®ГўГјГҐ'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].car_health_min.. ' / ' ..car_info[1].car_health_max or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Техническое состояние'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г’ГҐГµГ­ГЁГ·ГҐГ±ГЄГ®ГҐ Г±Г®Г±ГІГ®ГїГ­ГЁГҐ'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(tostring(car_info[1] and car_info[1].state.. ' / 100' or '--')); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Состояние масла'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г‘Г®Г±ГІГ®ГїГ­ГЁГҐ Г¬Г Г±Г«Г '); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].oil or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Страховка (на повреждение)'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г‘ГІГ°Г ГµГ®ГўГЄГ  (Г­Г  ГЇГ®ГўГ°ГҐГ¦Г¤ГҐГ­ГЁГҐ)'); imgui.NextColumn()
                     imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].insurance_damage or '--'))); imgui.NextColumn()
                     imgui.Separator()
-                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Страховка (на слёт)'); imgui.NextColumn()
-                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].insurance_meeting or 'отсутствует')))
+                    imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8'Г‘ГІГ°Г ГµГ®ГўГЄГ  (Г­Г  Г±Г«ВёГІ)'); imgui.NextColumn()
+                    imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(car_info[1] and car_info[1].insurance_meeting or 'Г®ГІГ±ГіГІГ±ГІГўГіГҐГІ')))
                 imgui.EndChild()
                 imgui.Separator()
                 imgui.ColButton(door_state)
@@ -803,7 +803,7 @@ function imgui.OnDrawFrame()
                     sampSendChat(command)
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (door_state and 'закрыть' or 'открыть') .. ' двери вашего транспортного средства.\n\nP.S. Используйте только стоя рядом с вашим т/c или находясь в нём.')) imgui.EndTooltip() end 
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г¬ГЁГІГҐ, Г·ГІГ®ГЎГ» ' .. (door_state and 'Г§Г ГЄГ°Г»ГІГј' or 'Г®ГІГЄГ°Г»ГІГј') .. ' Г¤ГўГҐГ°ГЁ ГўГ ГёГҐГЈГ® ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г®ГЈГ® Г±Г°ГҐГ¤Г±ГІГўГ .\n\nP.S. Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ ГІГ®Г«ГјГЄГ® Г±ГІГ®Гї Г°ГїГ¤Г®Г¬ Г± ГўГ ГёГЁГ¬ ГІ/c ГЁГ«ГЁ Г­Г ГµГ®Г¤ГїГ±Гј Гў Г­ВёГ¬.')) imgui.EndTooltip() end 
                 imgui.SameLine()
                 imgui.ColButton(key_state)
                 if imgui.Button(u8'KEY', imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
@@ -812,7 +812,7 @@ function imgui.OnDrawFrame()
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (key_state and 'вытащить ключи из замка' or 'вставить ключ в замок') .. ' зажигания вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г¬ГЁГІГҐ, Г·ГІГ®ГЎГ» ' .. (key_state and 'ГўГ»ГІГ Г№ГЁГІГј ГЄГ«ГѕГ·ГЁ ГЁГ§ Г§Г Г¬ГЄГ ' or 'ГўГ±ГІГ ГўГЁГІГј ГЄГ«ГѕГ· Гў Г§Г Г¬Г®ГЄ') .. ' Г§Г Г¦ГЁГЈГ Г­ГЁГї ГўГ ГёГҐГЈГ® ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г®ГЈГ® Г±Г°ГҐГ¤Г±ГІГўГ .\n\nP.S. Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ ГІГ®Г«ГјГЄГ® Г­Г ГµГ®Г¤ГїГ±Гј Гў ГІГ°Г Г­Г±ГЇГ®Г°ГІГҐ.')) imgui.EndTooltip() end
                 imgui.SameLine()
                 imgui.ColButton(drive_state)
                 if imgui.Button((drive_state and 'Comfort' or 'Sport'), imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then
@@ -821,7 +821,7 @@ function imgui.OnDrawFrame()
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Изменить режим езды [Sport, Comfort].\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г€Г§Г¬ГҐГ­ГЁГІГј Г°ГҐГ¦ГЁГ¬ ГҐГ§Г¤Г» [Sport, Comfort].\n\nP.S. Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ ГІГ®Г«ГјГЄГ® Г­Г ГµГ®Г¤ГїГ±Гј Гў ГІГ°Г Г­Г±ГЇГ®Г°ГІГҐ.')) imgui.EndTooltip() end
                 imgui.SameLine()
                 imgui.ColButton(abs_state)
                 if imgui.Button(u8'ABS', imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
@@ -830,28 +830,28 @@ function imgui.OnDrawFrame()
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (abs_state and 'выключить' or 'включить') .. ' систему ABS вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г¬ГЁГІГҐ, Г·ГІГ®ГЎГ» ' .. (abs_state and 'ГўГ»ГЄГ«ГѕГ·ГЁГІГј' or 'ГўГЄГ«ГѕГ·ГЁГІГј') .. ' Г±ГЁГ±ГІГҐГ¬Гі ABS ГўГ ГёГҐГЈГ® ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г®ГЈГ® Г±Г°ГҐГ¤Г±ГІГўГ .\n\nP.S. Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ ГІГ®Г«ГјГЄГ® Г­Г ГµГ®Г¤ГїГ±Гј Гў ГІГ°Г Г­Г±ГЇГ®Г°ГІГҐ.')) imgui.EndTooltip() end
                 imgui.Separator()
-                if imgui.Button(u8'Припарковать', imgui.ImVec2(107,20)) then 
+                if imgui.Button(u8'ГЏГ°ГЁГЇГ Г°ГЄГ®ГўГ ГІГј', imgui.ImVec2(107,20)) then 
                     parkingmod = true 
                 end
                 imgui.SameLine()
-                if imgui.Button(u8'Найти', imgui.ImVec2(107,20)) then 
+                if imgui.Button(u8'ГЌГ Г©ГІГЁ', imgui.ImVec2(107,20)) then 
                     state = 5
                     work = true
                     sampSendChat(command) 
                 end
                 imgui.SameLine()
-                if imgui.Button(u8'Сигнализация', imgui.ImVec2(107,20)) then 
+                if imgui.Button(u8'Г‘ГЁГЈГ­Г Г«ГЁГ§Г Г¶ГЁГї', imgui.ImVec2(107,20)) then 
                     state = 6
                     work = true
                     sampSendChat(command) 
                 end
 
                 if command == '/cars' then 
-                    button_key = 'Очистить посредников'; infotooltip = 'Забрать ключи у человека, которому вы их давали.'
+                    button_key = 'ГЋГ·ГЁГ±ГІГЁГІГј ГЇГ®Г±Г°ГҐГ¤Г­ГЁГЄГ®Гў'; infotooltip = 'Г‡Г ГЎГ°Г ГІГј ГЄГ«ГѕГ·ГЁ Гі Г·ГҐГ«Г®ГўГҐГЄГ , ГЄГ®ГІГ®Г°Г®Г¬Гі ГўГ» ГЁГµ Г¤Г ГўГ Г«ГЁ.'
                 elseif command == '/keys' then 
-                    button_key = 'Вернуть ключи'; infotooltip = 'Вернуть ключи владельцу.'
+                    button_key = 'Г‚ГҐГ°Г­ГіГІГј ГЄГ«ГѕГ·ГЁ'; infotooltip = 'Г‚ГҐГ°Г­ГіГІГј ГЄГ«ГѕГ·ГЁ ГўГ«Г Г¤ГҐГ«ГјГ¶Гі.'
                 end
                 if imgui.Button(u8(button_key), imgui.ImVec2(143,20)) then 
                     state = 7
@@ -860,16 +860,16 @@ function imgui.OnDrawFrame()
                 end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8(infotooltip)) imgui.EndTooltip() end
                 imgui.SameLine()
-                if imgui.Button(u8'Заспавнить', imgui.ImVec2(89,20)) then
+                if imgui.Button(u8'Г‡Г Г±ГЇГ ГўГ­ГЁГІГј', imgui.ImVec2(89,20)) then
 					if CheckBox['fixmycar'].v then sampSendChat('/fixmycar ' ..servercarid) end
                     state = 10
                     work = true
                     sampSendChat(command) 
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Ваше транспортное средство переместится на место парковки.\nСтоимость услуги: 1.000$.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г‚Г ГёГҐ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ­Г®ГҐ Г±Г°ГҐГ¤Г±ГІГўГ® ГЇГҐГ°ГҐГ¬ГҐГ±ГІГЁГІГ±Гї Г­Г  Г¬ГҐГ±ГІГ® ГЇГ Г°ГЄГ®ГўГЄГЁ.\nГ‘ГІГ®ГЁГ¬Г®Г±ГІГј ГіГ±Г«ГіГЈГЁ: 1.000$.')) imgui.EndTooltip() end
                 imgui.SameLine()
                 if command == '/cars' then
-                    if imgui.Button(u8'Выгрузить', imgui.ImVec2(89,20)) then
+                    if imgui.Button(u8'Г‚Г»ГЈГ°ГіГ§ГЁГІГј', imgui.ImVec2(89,20)) then
                         state_spawn = false
                         state = 1
                         work = true
@@ -881,10 +881,10 @@ function imgui.OnDrawFrame()
                 if carid then
                     if not work then
                         if cars[carid].pfine then
-                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} на штрафстоянке.')
+                            imgui.CenterTextColoredRGB('Г‚Г Гё ГІГ°Г Г­Г±ГЇГ®Г°ГІ {ffff00}' ..carname.. '{ffffff} Г­Г  ГёГІГ°Г ГґГ±ГІГ®ГїГ­ГЄГҐ.')
                         else
-                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
-                            if imgui.Button(u8'Загрузить', imgui.ImVec2(335,30)) then
+                            imgui.CenterTextColoredRGB('Г‚Г Гё ГІГ°Г Г­Г±ГЇГ®Г°ГІ {ffff00}' ..carname.. '{ffffff} Г­ГҐ Г§Г ГЈГ°ГіГ¦ГҐГ­.')
+                            if imgui.Button(u8'Г‡Г ГЈГ°ГіГ§ГЁГІГј', imgui.ImVec2(335,30)) then
                                 work = true
                                 sampSendChat('/cars')
                                 working = true
@@ -894,30 +894,30 @@ function imgui.OnDrawFrame()
                         imgui.SetCursorPosY(150)
                         imgui.SetCursorPosX(165)
                         imadd.Spinner('##spinner', 12, 3, imgui.GetColorU32(imgui.GetStyle().Colors[imgui.Col.ButtonHovered]))
-                        imgui.CenterTextColoredRGB('Подождите. Идёт загрузка транспорта {ffff00}' ..carname.. '{ffffff}.')
-                        if imgui.Button(u8'Стоп', imgui.ImVec2(335,30)) then
+                        imgui.CenterTextColoredRGB('ГЏГ®Г¤Г®Г¦Г¤ГЁГІГҐ. Г€Г¤ВёГІ Г§Г ГЈГ°ГіГ§ГЄГ  ГІГ°Г Г­Г±ГЇГ®Г°ГІГ  {ffff00}' ..carname.. '{ffffff}.')
+                        if imgui.Button(u8'Г‘ГІГ®ГЇ', imgui.ImVec2(335,30)) then
                             work = false   
                         end
                     end
                 else
-                    imgui.CenterText('Выберите транспорт из списка слева.')
+                    imgui.CenterText('Г‚Г»ГЎГҐГ°ГЁГІГҐ ГІГ°Г Г­Г±ГЇГ®Г°ГІ ГЁГ§ Г±ГЇГЁГ±ГЄГ  Г±Г«ГҐГўГ .')
                 end
             end
         imgui.EndChild()
         if data.version > thisScript().version_num then 
-            imgui.TextColoredRGB('{808080}  Доступно обновление!')
+            imgui.TextColoredRGB('{808080}  Г„Г®Г±ГІГіГЇГ­Г® Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ!')
             if imgui.IsItemClicked() then
                 info_update = true
             end
-            if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажми, чтобы узнать информацию об обновлении.')) imgui.EndTooltip() end
+            if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('ГЌГ Г¦Г¬ГЁ, Г·ГІГ®ГЎГ» ГіГ§Г­Г ГІГј ГЁГ­ГґГ®Г°Г¬Г Г¶ГЁГѕ Г®ГЎ Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГЁ.')) imgui.EndTooltip() end
             imgui.SameLine()
         end
         imgui.SetCursorPosX(345)
-        imgui.TextColoredRGB('{4169E1}S&D Scripts™')
+        imgui.TextColoredRGB('{4169E1}S&D ScriptsВ™')
         if imgui.IsItemClicked() then
             aboutmod = true
         end
-        if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Дополнительные настройки скрипта.')) imgui.EndTooltip() end
+        if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Г„Г®ГЇГ®Г«Г­ГЁГІГҐГ«ГјГ­Г»ГҐ Г­Г Г±ГІГ°Г®Г©ГЄГЁ Г±ГЄГ°ГЁГЇГІГ .')) imgui.EndTooltip() end
         imgui.SameLine()
         imgui.TextColoredRGB(' {ffffff}Version: {808080}' ..thisScript().version)
         imgui.End()
@@ -1008,13 +1008,13 @@ end
  
 function imgui.ColButton(style)
     if style then -- greenButton
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImColor(35, 84, 25, 255):GetVec4()) -- изначальный цвет RGBA
-        imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImColor(30, 70, 20, 255):GetVec4()) -- цвет при наведении на кнопку (темнее)
-        imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImColor(48, 115, 34, 255):GetVec4()) -- цвет при нажатии на кнопку (светлее)
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImColor(35, 84, 25, 255):GetVec4()) -- ГЁГ§Г­Г Г·Г Г«ГјГ­Г»Г© Г¶ГўГҐГІ RGBA
+        imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImColor(30, 70, 20, 255):GetVec4()) -- Г¶ГўГҐГІ ГЇГ°ГЁ Г­Г ГўГҐГ¤ГҐГ­ГЁГЁ Г­Г  ГЄГ­Г®ГЇГЄГі (ГІГҐГ¬Г­ГҐГҐ)
+        imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImColor(48, 115, 34, 255):GetVec4()) -- Г¶ГўГҐГІ ГЇГ°ГЁ Г­Г Г¦Г ГІГЁГЁ Г­Г  ГЄГ­Г®ГЇГЄГі (Г±ГўГҐГІГ«ГҐГҐ)
     else --redButton
-        imgui.PushStyleColor(imgui.Col.Button, imgui.ImColor(120, 34, 34, 255):GetVec4()) -- изначальный цвет RGBA
-        imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImColor(107, 30, 30, 255):GetVec4()) -- цвет при наведении на кнопку (темнее)
-        imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImColor(135, 38, 38, 255):GetVec4()) -- цвет при нажатии на кнопку (светлее)
+        imgui.PushStyleColor(imgui.Col.Button, imgui.ImColor(120, 34, 34, 255):GetVec4()) -- ГЁГ§Г­Г Г·Г Г«ГјГ­Г»Г© Г¶ГўГҐГІ RGBA
+        imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ImColor(107, 30, 30, 255):GetVec4()) -- Г¶ГўГҐГІ ГЇГ°ГЁ Г­Г ГўГҐГ¤ГҐГ­ГЁГЁ Г­Г  ГЄГ­Г®ГЇГЄГі (ГІГҐГ¬Г­ГҐГҐ)
+        imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImColor(135, 38, 38, 255):GetVec4()) -- Г¶ГўГҐГІ ГЇГ°ГЁ Г­Г Г¦Г ГІГЁГЁ Г­Г  ГЄГ­Г®ГЇГЄГі (Г±ГўГҐГІГ«ГҐГҐ)
     end
 end
 
