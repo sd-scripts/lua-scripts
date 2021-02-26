@@ -21,6 +21,7 @@ local old_cars = {}
 local car_info = {}
 local settings = {}
 local target = {i={},state=false}
+local step = 0
 
 local main_window = imgui.ImBool(false)
 local target_window = imgui.ImBool(false)
@@ -36,7 +37,8 @@ local cfg = inicfg.load({
 		fixmycar = false,
         enter = true,
         unloading = false,
-        save = false
+        save = false,
+        fuel = true
     },
     HotKey = {
         lock = "[76]",
@@ -50,7 +52,8 @@ local CheckBox = {
 	['fixmycar'] = imgui.ImBool(cfg.CheckBox.fixmycar),
     ['enter'] = imgui.ImBool(cfg.CheckBox.enter),
     ['unloading'] = imgui.ImBool(cfg.CheckBox.unloading),
-    ['save'] = imgui.ImBool(cfg.CheckBox.save)
+    ['save'] = imgui.ImBool(cfg.CheckBox.save),
+    ['fuel'] = imgui.ImBool(cfg.CheckBox.fuel)
 }
 
 local ActiveMenus = {
@@ -409,12 +412,26 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
     end
 end
 
+function refueling()
+    wait(50)
+    sampSendClickTextdraw(idtextdraw_change)
+    wait(30)
+    sampSendClickTextdraw(idtextdraw_fill)
+end
+
 function sampev.onDisplayGameText(style, time, text)
     if style == 3 then
         if text:match('CAR%~[gr]%~ (%u+)%~n%~%/lock') then door_state = not door_state end
         if text:match('Style%:.+%~(%w+)%!') then drive_state = not drive_state end
         if text:match('ABS%: .+%~(%u+)%!') then abs_state = not abs_state end
     end
+end
+
+function sampev.onShowTextDraw(id, data)
+    if data.text == 'DIESEL' and cfg.CheckBox.fuel then step = 1 end
+    if data.text:find('%$%d+') and step == 1 then step = 2; idtextdraw_money = id end
+    if data.text:find('LD%_BEAT%:chit') and data.lineWidth == 19 and step == 2 then step = 3; idtextdraw_change = id end
+    if data.text:find('FILL') and step == 3 then step = 4; idtextdraw_fill = id; sampSendClickTextdraw(idtextdraw_money); lua_thread.create(refueling) end
 end
  
 function sampev.onServerMessage(color,text)
@@ -431,6 +448,11 @@ function sampev.onServerMessage(color,text)
         work = false
         reloadmod = true
         return false
+    end
+
+    if cfg.CheckBox.fuel then
+        if text:find('Данный тип топлива не подходит для вашего транспорта') then lua_thread.create(refueling) return false end
+        if text:find('Используйте курсор чтобы выбрать тип топлива и его кол%-во') or text:find('Вы можете заправить полный бак %- нажав на стоимость топлива') then return false end
     end
 
     if text:find('смотрит тех. паспорт.') then return false end
@@ -658,7 +680,9 @@ function imgui.OnDrawFrame()
                 end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт будет запоминать, какие у вас транспортные средства были загружены,\nа при заходе в игру вернёт статус, как это было в последний раз.')) imgui.EndTooltip() end
 				if imgui.Checkbox(u8'Использовать команду "/fixmycar" перед спавном', CheckBox['fixmycar']) then cfg.CheckBox.fixmycar = CheckBox['fixmycar'].v; inicfg.save(cfg, 'MyCar.ini') end
-				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При нажатии на кнопку "Заспавнить" будет перед спавном прописываться команда "/fixmycar [id транспорта]".\nИСПОЛЬЗОВАТЬ НА СВОЙ СТРАХ И РИСК.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При нажатии на кнопку "Заспавнить" будет перед спавном прописываться команда "/fixmycar [id транспорта]".')) imgui.EndTooltip() end
+				if imgui.Checkbox(u8'Автоматическая заправка транспорта на АЗС', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скритп за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
 				
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
                 if imadd.HotKey("##menu", ActiveMenus, tLastKeys, 80) then
