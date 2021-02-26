@@ -467,7 +467,7 @@ function main()
     local load = settings.load({}, getWorkingDirectory().. '\\config\\mycar.json')
     if #load > 0 then old_cars = load[nickname .. '\\' .. ip] end
 
-    if cfg.CheckBox.save and #old_cars > 0 then
+    if cfg.CheckBox.save and old_cars and #old_cars > 0 then
         check_old = true; sampSendChat('/cars')
     end
 
