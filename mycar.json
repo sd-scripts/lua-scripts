@@ -1,1 +1,5 @@
-{"Enzo_Davenport\\185.169.134.5":[{"spawn":false,"name":"Feltzer","id":0}]}
+{
+  version = 3,
+  name = 1.1.0,
+  info = 'Первая строка\nВторая строка\nТретья строка'
+}
