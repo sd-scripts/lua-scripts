@@ -70,7 +70,8 @@ local tLastKeys = {}
 
 function settings.load(table, dir)
     if not doesFileExist(dir) then
-        local f = io.open(dir, 'w+'); local suc = f:write(encodeJson({[nickname .. '\\' .. ip] = table})); f:close()
+        print('{ff0000}Ошибка: {ffffff}отсутсвует файл сохранения статуса. Создан файл: {00ff00}config\\mycar.json.')
+        local f = io.open(dir, 'w+'); local suc = f:write(encodeJson(table)); f:close()
         if suc then return table end
         return table
     else
@@ -87,7 +88,6 @@ function settings.save(table, dir)
 end
 
 function sampev.onShowDialog(id, style, title, b1,b2,text)
-    --sampAddChatMessage('DIALOGID: ' ..id, -1)
     if id == 1162 then
         if work and carid then
             sampSendDialogResponse(1162, 1, cars[carid]['id'], -1)
@@ -272,7 +272,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 unloading_cars = false
             end     
         else
-            settings.save(cars, getWorkingDirectory().. '\\config\\mycar.json')
+            if cfg.CheckBox.save then settings.save(cars, getWorkingDirectory().. '\\config\\mycar.json') end
             command = '/cars'; id_dialog = 162; cars_info = 'Мой транспорт'
             if not target_window.v then main_window.v = true end
         end
@@ -444,16 +444,19 @@ function main()
     downloadUrlToFile('https://raw.githubusercontent.com/sd-scripts/lua-scripts/main/mycar.json', getWorkingDirectory()..'\\mycar.json', function(id, status, p1, p2)
         if status == 6 then
             while not doesFileExist(update_file) do wait(0) end
-            local f = io.open(update_file, 'a+'); 
-            data = decodeJson(f:read('a*'));
-            f:close();
-            os.remove(update_file)
+            lua_thread.create(function ()
+                local f = io.open(update_file, 'a+');
+                wait(100) 
+                data = decodeJson(f:read('a*'));
+                f:close();
+                os.remove(update_file)
+            end)
         end
     end)
     while not data do wait(0) end
 
     if not doesFileExist('moonloader/config/MyCar.ini') then
-        if inicfg.save(cfg, 'MyCar.ini') then sampfuncsLog('[MyCar] Создан файл конфигурации: MyCar.ini') end
+        if inicfg.save(cfg, 'MyCar.ini') then print('{ff0000}Ошибка: {ffffff}файл конфигурации не найден. Создан файл: {00ff00}config\\MyCar.ini') end
     end
     
     while not sampIsLocalPlayerSpawned() do wait(120) end
