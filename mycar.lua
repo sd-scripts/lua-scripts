@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
 script_version('1.1.1')
-script_version_number(4)
+script_version_number(4) 
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -21,20 +21,20 @@ local old_cars = {}
 local car_info = {}
 local settings = {}
 local target = {i={},state=false}
-local step = 0
 
 local main_window = imgui.ImBool(false)
 local target_window = imgui.ImBool(false)
 local check_old = false
 local unloading_cars = false
 local work = false
+local working = false
 local state = 0
 local bindID = 0
+local step = 0
 local sellsum = imgui.ImBuffer(150)
 
 local cfg = inicfg.load({
     CheckBox = {
-		fixmycar = false,
         enter = true,
         unloading = false,
         save = false,
@@ -49,7 +49,6 @@ local cfg = inicfg.load({
 }, 'MyCar')
 
 local CheckBox = {
-	['fixmycar'] = imgui.ImBool(cfg.CheckBox.fixmycar),
     ['enter'] = imgui.ImBool(cfg.CheckBox.enter),
     ['unloading'] = imgui.ImBool(cfg.CheckBox.unloading),
     ['save'] = imgui.ImBool(cfg.CheckBox.save),
@@ -287,7 +286,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
     if id == 163 then
         if title:find('{BFBBBA}Инструменты для .+ %(%d+%)') then
 
-            if work then 
+            if work then
                 work = false
                 if check_old or unloading_cars then
                     sampSendDialogResponse(163, 1, 10, 1)
@@ -366,6 +365,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 state = 0
                 work = true
                 carid = recarid
+                working = true
             end
  
         else
@@ -440,6 +440,7 @@ function sampev.onServerMessage(color,text)
 	if text:find('%[Ошибка%] %{FFFFFF%}В данном гараже уже припарковано 1 %/ 1, а это авто сейчас находится в гараже.') then
 		if check_old or unloading_cars then check_old = false; unloading_cars = false; work = false return false end
 	end
+    if text:find('%[Ошибка%] %{FFFFFF%}Загрузить транспорт не удалось %#2%!') then return false end
 	if text:find('Ключи не вставлены') and CheckBox['enter'].v then
         sampSendChat('/key'); sampSendChat('/engine') 
         return false 
@@ -466,13 +467,10 @@ function main()
     downloadUrlToFile('https://raw.githubusercontent.com/sd-scripts/lua-scripts/main/mycar.json', getWorkingDirectory()..'\\mycar.json', function(id, status, p1, p2)
         if status == 6 then
             while not doesFileExist(update_file) do wait(0) end
-            lua_thread.create(function ()
-                local f = io.open(update_file, 'a+');
-                wait(100) 
-                data = decodeJson(f:read('a*'));
-                f:close();
-                os.remove(update_file)
-            end)
+            local f = io.open(update_file, 'r+');
+            data = decodeJson(f:read('a*'));
+            f:close();
+            os.remove(update_file)
         end
     end)
     while not data do wait(0) end
@@ -487,7 +485,7 @@ function main()
     ip, port = sampGetCurrentServerAddress()
 
     local load = settings.load({}, getWorkingDirectory().. '\\config\\mycar.json')
-    if #load > 0 then old_cars = load[nickname .. '\\' .. ip] end
+    if encodeJson(load) ~= '{}' then old_cars = load[nickname .. '\\' .. ip] end
 
     if cfg.CheckBox.save and old_cars and #old_cars > 0 then
         check_old = true; sampSendChat('/cars')
@@ -524,7 +522,7 @@ function main()
                 end 
             end
         end
-        if isKeyJustPressed(cfg.HotKey.interaction1) and target.state then target_window.v = true; sampSendChat('/cars') end
+        if isKeyJustPressed(cfg.HotKey.interaction:match('%[(%d+)%]')) and target.state then target_window.v = true; sampSendChat('/cars') end
         wait(0)
         imgui.Process = main_window.v or target_window.v
         if not main_window.v then state_spawn = false; carid = nil end
@@ -679,10 +677,8 @@ function imgui.OnDrawFrame()
                     inicfg.save(cfg, 'MyCar.ini')
                 end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт будет запоминать, какие у вас транспортные средства были загружены,\nа при заходе в игру вернёт статус, как это было в последний раз.')) imgui.EndTooltip() end
-				if imgui.Checkbox(u8'Использовать команду "/fixmycar" перед спавном', CheckBox['fixmycar']) then cfg.CheckBox.fixmycar = CheckBox['fixmycar'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При нажатии на кнопку "Заспавнить" будет перед спавном прописываться команда "/fixmycar [id транспорта]".')) imgui.EndTooltip() end
 				if imgui.Checkbox(u8'Автоматическая заправка транспорта на АЗС', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скритп за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
 				
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
                 if imadd.HotKey("##menu", ActiveMenus, tLastKeys, 80) then
@@ -728,18 +724,24 @@ function imgui.OnDrawFrame()
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере темы на портале BlastHack.')) imgui.EndTooltip() end
 				imgui.SameLine()
 				imgui.ColorButton(35, 84, 25, 30, 70, 20, 48, 115, 34)
-				if imgui.Button(u8'Техподдержка', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.me/sd_scripts"') end
+				if imgui.Button(u8'Техподдержка', imgui.ImVec2(109,20)) then os.execute('explorer "https://vk.me/sd_scripts"') end
 				imgui.PopStyleColor(3)
 				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, вы попадёте в техподдержку (личные сообщения нашей группы ВКонтакте).')) imgui.EndTooltip() end
 				imgui.Separator()
 				
                 imgui.SetCursorPosY(385)
 				imgui.ColorButton(120, 34, 34, 107, 30, 30, 135, 38, 38)
-                if imgui.Button(u8'Выключить скрипт', imgui.ImVec2(165,20)) then thisScript():unload() end
+                if imgui.Button(u8'Выключить', imgui.ImVec2(115,20)) then thisScript():unload() end
 				imgui.PopStyleColor(3)
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Выключает скрипт до перезагрузки (CTRL+R) или перезахода в игру.')) imgui.EndTooltip() end
                 imgui.SameLine()
-                if imgui.Button(u8'Закрыть', imgui.ImVec2(165,20)) then aboutmod = false end
+                imgui.ColorButton(16, 73, 148, 16, 65, 130, 21, 86, 171)
+                if imgui.Button(u8'Перезагрузить', imgui.ImVec2(115,20)) then thisScript():reload() end
+                imgui.PopStyleColor(3)
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Полная перезагрузка скрипта.')) imgui.EndTooltip() end
+                imgui.SameLine()
+                if imgui.Button(u8'Закрыть', imgui.ImVec2(93,20)) then aboutmod = false end
+                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Закрывает меню настроек.')) imgui.EndTooltip() end
             end
             if reloadmod then
                 imgui.SetCursorPosY(135)
@@ -748,7 +750,7 @@ function imgui.OnDrawFrame()
                 for i, v in ipairs(cars) do
                     if cars[i]['spawn'] then
                         if imgui.Button(v['name'], imgui.ImVec2(335,25)) then
-                            recarid = carid; carid = i; state_spawn = false; work = true; state = 11; reloadmod = false; sampSendChat('/cars')
+                            working = false; recarid = carid; carid = i; state_spawn = false; work = true; state = 11; reloadmod = false; sampSendChat('/cars')
                         end
                     end
                 end
@@ -889,7 +891,6 @@ function imgui.OnDrawFrame()
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8(infotooltip)) imgui.EndTooltip() end
                 imgui.SameLine()
                 if imgui.Button(u8'Заспавнить', imgui.ImVec2(89,20)) then
-					if CheckBox['fixmycar'].v then sampSendChat('/fixmycar ' ..servercarid) end
                     state = 10
                     work = true
                     sampSendChat(command) 
