@@ -785,6 +785,7 @@ function imgui.OnDrawFrame()
                     local text = data.info
                     if text then
                         for line in text:gmatch('[^\r\n]+') do
+                            
                             imgui.Text(line)
                         end
                     else
