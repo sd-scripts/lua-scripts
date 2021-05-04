@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.1.2')
-script_version_number(5) 
+script_version('1.2.0')
+script_version_number(6) 
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -17,23 +17,20 @@ u8 = encoding.UTF8
 
 local data = {}
 local cars = {}
-local load = {}
-local old_cars = {}
 local car_info = {}
-local settings = {}
 local target = {i={},state=false}
 local vehicle = {i={},state=false}
 
 local main_window = imgui.ImBool(false)
 local target_window = imgui.ImBool(false)
-local check_old = false
-local unloading_cars = false
 local work = false
 local working = false
+local unloading_cars = false
+local text_loads = 'Получаем данные...'
+local text_load = 'Получаем данные...'
 local state = 0
 local bindID = 0
 local step = 0
-local sellsum = imgui.ImBuffer(150)
 local font_flag = require('moonloader').font_flag
 local font = renderCreateFont("Arial", 10, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
 
@@ -41,7 +38,6 @@ local cfg = inicfg.load({
     CheckBox = {
         enter = true,
         unloading = false,
-        save = false,
         fuel = true,
         key = true,
         hint = true
@@ -58,7 +54,6 @@ local cfg = inicfg.load({
 local CheckBox = {
     ['enter'] = imgui.ImBool(cfg.CheckBox.enter),
     ['unloading'] = imgui.ImBool(cfg.CheckBox.unloading),
-    ['save'] = imgui.ImBool(cfg.CheckBox.save),
     ['fuel'] = imgui.ImBool(cfg.CheckBox.fuel),
     ['key'] = imgui.ImBool(cfg.CheckBox.key),
     ['hint'] = imgui.ImBool(cfg.CheckBox.hint)
@@ -101,33 +96,6 @@ function checkServer(ip)
         ['185.169.134.174'] = 'Payson'
     }
 	return tServers[ip]
-end
-
-function settings.load(table, dir)
-    if doesFileExist(getWorkingDirectory().. '\\config\\mycar.json') then
-        os.remove(getWorkingDirectory().. '\\config\\mycar.json')
-        print('{FF8C00}Предупреждение: {ffffff}Был удалён старый файл: {00ff00}config\\mycar.json')
-    end
-    if not doesDirectoryExist(getWorkingDirectory().. '\\config\\MyCar') then
-        local result = createDirectory(getWorkingDirectory().. '\\config\\MyCar')
-        if result then print('{FF8C00}Предупреждение: {ffffff}отсутсвует папка для сохранения статуса. Создана папка: {00ff00}config\\MyCar') end
-    end
-    if not doesFileExist(dir) then
-        print('{FF8C00}Предупреждение: {ffffff}отсутсвует файл сохранения статуса. Создан файл: {00ff00}config\\MyCar\\' ..nickname.. '(' ..nameServ.. ').json')
-        local f = io.open(dir, 'w+'); local suc = f:write(encodeJson(table)); f:close()
-        if suc then return table end
-        return table
-    else
-        local f = io.open(dir, 'r+'); local array = decodeJson(f:read('a*')); f:close()
-        if not array then return table end
-        return array
-    end
-end
-
-function settings.save(table, dir)
-    local f = io.open(dir, 'w+'); local suc = f:write(encodeJson(table));
-    f:close()
-    return table
 end
 
 function sampev.onShowDialog(id, style, title, b1,b2,text)
@@ -278,59 +246,32 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             table.insert(cars, t)
             i = i + 1
         end
-        if check_old then
-            list = {}
-            for k, v in pairs(cars) do 
-                list[v.name .. v.id] = v.spawn
-            end
-            
-            for k, v in pairs(old_cars) do -- выгрузка авто
-                if list[v.name .. v.id] ~= v.spawn then
-                    if not v.spawn then
-                        work = true
-                        sampSendDialogResponse(162, 1, v.id, -1)
-                    end
-                end
-            end
 
-            for k, v in pairs(old_cars) do -- загрузка авто
-                if list[v.name .. v.id] ~= v.spawn then
-                    sampSendDialogResponse(162, 1, v.id, -1)
-                    if v.spawn then work = true end
-                end
-            end
-            
-            if not work then
-                check_old = false
-            end
-        elseif unloading_cars then
+        if unloading_cars then
             for k, v in pairs(cars) do 
                 if v.spawn then
                     work = true
                     sampSendDialogResponse(162, 1, v.id, -1)
                 end
             end
-
             if not work then
                 unloading_cars = false
-            end     
+            end
         else
-            if cfg.CheckBox.save then settings.save(cars, getWorkingDirectory().. '\\config\\MyCar\\' ..nickname.. '(' ..nameServ.. ').json') end
             command = '/cars'; id_dialog = 162; cars_info = 'Мой транспорт'
-            if not target_window.v and not work then main_window.v = true end
+            if not target_window.v and not work then 
+                main_window.v = true 
+            end
         end
-
         sampSendDialogResponse(id, 0, nil, nil)
         return false
- 
     end
     if id == 163 then
         if title:find('{BFBBBA}Инструменты для .+ %(%d+%)') then
-
             if work then
                 work = false
-                if check_old or unloading_cars then
-                    sampSendDialogResponse(163, 1, 10, 1)
+                if unloading_cars then
+                    sampSendDialogResponse(163, 1, 11, 1)
                 end
                 if working then
                     working = false
@@ -356,6 +297,9 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                     if l == 8 then --ABS
                         if v:match('Система ABS  %[ %{......%}ВКЛ%{......%} %]') then abs_state = true else abs_state = false end
                     end
+                    if l == 10 then --Загрузка при авторизации
+                        if v:find('Загружать при авторизации') or v:find('Не загружать при авторизации') then text_loads = v end
+                    end
                     l = l + 1
                 end
 
@@ -363,8 +307,9 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             end
  
             if state == 1 then
-                sampSendDialogResponse(163, 1, 10, -1)
+                sampSendDialogResponse(163, 1, 11, -1)
                 state = 0
+                state_spawn = false
                 carid = nil
             end
             if state == 2 then
@@ -407,19 +352,33 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             if state == 11 then
                 sampSendDialogResponse(163, 1, 10, -1)
                 state = 0
-                work = true
-                carid = recarid
-                working = true
+                if text_loads == 'Загружать при авторизации' then
+                    text_loads = 'Не загружать при авторизации'
+                elseif text_loads == 'Не загружать при авторизации' then
+                    text_loads = 'Загружать при авторизации'
+                end
             end
- 
         else
             if work then
-                sampSendDialogResponse(163, 1, 0, -1)
-                if check_old then
-                    work = false 
+                if loading then
+                    sampSendDialogResponse(163, 1, 1, -1)
+                    work = false
+                    loading = false
+                    if text_load == 'Загружать при авторизации' then
+                        text_load = 'Не загружать при авторизации'
+                    elseif text_load == 'Не загружать при авторизации' then
+                        text_load = 'Загружать при авторизации'
+                    end
+                else
+                    sampSendDialogResponse(163, 1, 0, -1)
+                    work = false
+                    carid = nil
                 end
             else
-                sampSendDialogResponse(163, 0, nil, nil)
+                --sampSendDialogResponse(163, 0, nil, nil)
+                for v in string.gmatch(text, '[^\n]+') do
+                    if v:find('Загружать при авторизации') or v:find('Не загружать при авторизации') then text_load = v end
+                end
             end
         end
 
@@ -479,17 +438,26 @@ function sampev.onShowTextDraw(id, data)
 end
  
 function sampev.onServerMessage(color,text)
+    if text:find('Нельзя ставить автозагрузку у более двух авто, сначала уберите автозагрузку с другого авто') then
+        load_status = not load_status
+        loads_status = not loads_status
+        if text_loads == 'Загружать при авторизации' then
+            text_loads = 'Не загружать при авторизации'
+        elseif text_loads == 'Не загружать при авторизации' then
+            text_loads = 'Загружать при авторизации'
+        end
+        if text_load == 'Загружать при авторизации' then
+            text_load = 'Не загружать при авторизации'
+        elseif text_load == 'Не загружать при авторизации' then
+            text_load = 'Загружать при авторизации'
+        end
+    end
     if text:find('вытащил%(а%) ключи из замка зажигания') or text:find('вставил%(а%) ключи в замок зажигания') then key_state = not key_state end
     if text:find('Загрузить транспорт не удалось') then return false end
-	if text:find('%[Ошибка%] %{FFFFFF%}В данном гараже уже припарковано 1 %/ 1, а это авто сейчас находится в гараже.') then
-		if check_old or unloading_cars then check_old = false; unloading_cars = false; work = false return false end
-	end
-
     if text:find('Ключи не вставлены') and CheckBox['enter'].v then
         sampSendChat('/key'); sampSendChat('/engine') 
         return false 
     end
-
     if text:find('Вы не в своем авто') and CheckBox['key'].v then 
         lua_thread.create(function()
             CheckBox['key'].v = false
@@ -497,20 +465,14 @@ function sampev.onServerMessage(color,text)
             CheckBox['key'].v = true
         end)
         return false 
+    end    
+    if text:find('Нельзя загружать более двух авто одновременно, сначало выгрузите одно авто') and working then
+        working = false
     end
-    
-            
-    if text:find('Нельзя загружать более двух авто одновременно, сначало выгрузите одно авто') and work then
-        work = false
-        reloadmod = true
-        return false
-    end
-
     if cfg.CheckBox.fuel then
         if text:find('Данный тип топлива не подходит для вашего транспорта') then lua_thread.create(refueling) return false end
         if text:find('Используйте курсор чтобы выбрать тип топлива и его кол%-во') or text:find('Вы можете заправить полный бак %- нажав на стоимость топлива') then return false end
     end
-
     if text:find('смотрит тех. паспорт.') then return false end
 end
  
@@ -537,18 +499,10 @@ function main()
     while not sampIsLocalPlayerSpawned() do wait(120) end
     
     nameServ = checkServer(select(1, sampGetCurrentServerAddress()))
-    nickname = sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(playerPed)))
     
     if not nameServ then
 		print('{ff0000}Ошибка: {ffffff}скрипт работает только на проекте {FA8072}Arizona RP.')
 		thisScript():unload()
-	else
-        old_cars = settings.load({}, getWorkingDirectory().. '\\config\\MyCar\\' ..nickname.. '(' ..nameServ.. ').json')
-    end
-
-
-    if cfg.CheckBox.save and #old_cars > 0 then
-        check_old = true; sampSendChat('/cars')
     end
 
     if cfg.CheckBox.unloading then
@@ -755,15 +709,15 @@ function imgui.OnDrawFrame()
  
         local sw, sh = getScreenResolution()
         imgui.SetNextWindowPos(imgui.ImVec2(sw / 2, sh / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(515, 465))
+        imgui.SetNextWindowSize(imgui.ImVec2(515, 485))
         imgui.Begin(u8('MyCar | ' ..cars_info),  main_window, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoCollapse)
-        imgui.BeginChild('##panel_1', imgui.ImVec2(145, 410), true)
+        imgui.BeginChild('##panel_1', imgui.ImVec2(145, 430), true)
             imgui.CenterText('Список авто:')
             for i, v in ipairs(cars) do
                 if not aboutmod and not info_update then
                     imgui.ColButton(cars[i]['spawn'])
                     if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20)) and not work then
-                        carname = v['name']; car_info = {}; carid = i; sampSendChat(command); sampSendDialogResponse(id_dialog, 1, cars[carid]['id'], -1); state_spawn = cars[carid]['spawn']
+                        carname = v['name']; car_info = {}; carid = i; sampSendChat(command); sampSendDialogResponse(id_dialog, 1, cars[carid]['id'], -1); state_spawn = cars[carid]['spawn']; text_loads = 'Получаем данные...'; text_load = 'Получаем данные...'
                     end    
                     imgui.PopStyleColor(3)
                 else
@@ -776,20 +730,17 @@ function imgui.OnDrawFrame()
 
         imgui.SameLine()
         
-        imgui.BeginChild('##panel_2', imgui.ImVec2(347, 410), true)
+        imgui.BeginChild('##panel_2', imgui.ImVec2(347, 430), true)
             if info_update then
                 aboutmod = false
                 imgui.CenterTextColoredRGB('{4169E1}Доступно новое обновление v' ..data.name.. '.'); imgui.Separator()
                 imgui.CenterTextColoredRGB('{73B461}Полный список изменений:')
-                imgui.BeginChild('##update', imgui.ImVec2(330, 335), true)
+                imgui.BeginChild('##update', imgui.ImVec2(330, 355), true)
                     local text = data.info
                     if text then
-                        for line in text:gmatch('[^\r\n]+') do
-                            
-                            imgui.Text(line)
-                        end
+                        imgui.TextWrapped(text)
                     else
-                        imgui.SetCursorPosY(160)
+                        imgui.SetCursorPosY(180)
                         imgui.CenterTextColoredRGB('{DCDCDC}Не удалось загрузить информацию об обновлении.')
                     end
                 imgui.EndChild()
@@ -808,18 +759,11 @@ function imgui.OnDrawFrame()
                 if imgui.Checkbox(u8'Достать ключ из замка зажигания при выходе из т/с', CheckBox['key']) then cfg.CheckBox.key = CheckBox['key'].v; inicfg.save(cfg, 'MyCar.ini') end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас будет доставать ключи из замка зажигания при выходе из транспортного средства.')) imgui.EndTooltip() end
                 if imgui.Checkbox(u8'Выгружать весь транспорт при подключении', CheckBox['unloading']) then
-                    if CheckBox['unloading'].v then cfg.CheckBox.save = false; CheckBox['save'].v = false end
                     cfg.CheckBox.unloading = CheckBox['unloading'].v
                     inicfg.save(cfg, 'MyCar.ini') 
                 end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При входе в игру скрипт выгрузит все ваши транспортные средства с сервера.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Сохранять статус загрузки/выгрузки транспорта', CheckBox['save']) then 
-                    if CheckBox['save'].v then cfg.CheckBox.unloading = false; CheckBox['unloading'].v = false end
-                    cfg.CheckBox.save = CheckBox['save'].v 
-                    inicfg.save(cfg, 'MyCar.ini')
-                end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт будет запоминать, какие у вас транспортные средства были загружены,\nа при заходе в игру вернёт статус, как это было в последний раз.')) imgui.EndTooltip() end
-				if imgui.Checkbox(u8'Автоматическая заправка транспорта на АЗС', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
+                if imgui.Checkbox(u8'Автоматическая заправка транспорта на АЗС', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
 				
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
@@ -858,7 +802,7 @@ function imgui.OnDrawFrame()
                 imgui.SameLine(); imgui.SetCursorPosX(320)
                 if imgui.Checkbox('##hint',CheckBox['hint']) then cfg.CheckBox.hint = CheckBox['hint'].v; inicfg.save(cfg, 'MyCar.ini') end
 				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8((CheckBox['hint'].v and 'Отключить' or 'Включить').. ' подсказки при использовании функции (на персонаже/транспорте).')) imgui.EndTooltip() end
-				imgui.SetCursorPosY(315)
+				imgui.SetCursorPosY(335)
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{A9A9A9}Обратная связь:'); imgui.Separator()
 				imgui.ColorButton(11, 88, 230, 10, 80, 209, 12, 94, 245)
                 if imgui.Button(u8'ВКонтакте', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.com/sd_scripts"') end
@@ -879,7 +823,7 @@ function imgui.OnDrawFrame()
 				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, вы попадёте в техподдержку (личные сообщения нашей группы ВКонтакте).')) imgui.EndTooltip() end
 				imgui.Separator()
 				
-                imgui.SetCursorPosY(385)
+                imgui.SetCursorPosY(405)
 				imgui.ColorButton(120, 34, 34, 107, 30, 30, 135, 38, 38)
                 if imgui.Button(u8'Выключить', imgui.ImVec2(115,20)) then thisScript():unload() end
 				imgui.PopStyleColor(3)
@@ -892,22 +836,6 @@ function imgui.OnDrawFrame()
                 imgui.SameLine()
                 if imgui.Button(u8'Закрыть', imgui.ImVec2(93,20)) then aboutmod = false end
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Закрывает меню настроек.')) imgui.EndTooltip() end
-            end
-            if reloadmod then
-                imgui.SetCursorPosY(135)
-                imgui.CenterTextColoredRGB('{808080}Вы можете иметь лишь два загруженных т/c.')
-                imgui.CenterTextColoredRGB('{808080}Выберите, какой транспорт выгрузить взамен:')
-                for i, v in ipairs(cars) do
-                    if cars[i]['spawn'] then
-                        if imgui.Button(v['name'], imgui.ImVec2(335,25)) then
-                            working = false; recarid = carid; carid = i; state_spawn = false; work = true; state = 11; reloadmod = false; sampSendChat('/cars')
-                        end
-                    end
-                end
-                imgui.SetCursorPosX(223)
-                imgui.ColorButton(112, 112, 112, 99, 99, 99, 130, 130, 130)
-                if imgui.Button(u8'Назад', imgui.ImVec2(120, 20)) then reloadmod = false end
-                imgui.PopStyleColor(3)
             end
             if parkingmod then
                 imgui.SetCursorPosY(160)
@@ -1023,6 +951,13 @@ function imgui.OnDrawFrame()
                         work = true
                         sampSendChat('/cars')
                     end
+                    if text_loads == 'Загружать при авторизации' then loads_status = false else loads_status = true end
+                    imgui.ColButton(loads_status)
+                    if imgui.Button(u8(text_loads), imgui.ImVec2(332,20)) then
+                        work = true; state = 11; sampSendChat('/cars')
+                    end
+                    imgui.PopStyleColor(3)
+                    if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на эту кнопку, можно изменить статус загрузки транспорта сервером.\nВ данный момент транпорт ' ..(loads_status and 'будет' or 'не будет') .. ' загружен при входе на сервер.')) imgui.EndTooltip() end
                 end
             elseif not state_spawn and not parkingmod and not reloadmod and not aboutmod and not info_update then
                 imgui.SetCursorPosY(180)
@@ -1031,20 +966,36 @@ function imgui.OnDrawFrame()
                         if cars[carid].pfine then
                             imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} на штрафстоянке.')
                         else
+                            imgui.SetCursorPosY(160)
                             imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
-                            if imgui.Button(u8'Загрузить', imgui.ImVec2(335,30)) then
+                            if imgui.Button(u8'Загрузить', imgui.ImVec2(335,25)) then
                                 work = true
                                 sampSendChat('/cars')
                                 working = true
                             end
+                            if text_load == 'Загружать при авторизации' then load_status = false else load_status = true end
+                            imgui.ColButton(load_status)
+                            if imgui.Button(u8(text_load), imgui.ImVec2(335,25)) then
+                                work = true
+                                sampSendChat('/cars')
+                                loading = true
+                            end
+                            imgui.PopStyleColor(3)
                         end
                     else
-                        imgui.SetCursorPosY(150)
-                        imgui.SetCursorPosX(165)
-                        imadd.Spinner('##spinner', 12, 3, imgui.GetColorU32(imgui.GetStyle().Colors[imgui.Col.ButtonHovered]))
-                        imgui.CenterTextColoredRGB('Подождите. Идёт загрузка транспорта {ffff00}' ..carname.. '{ffffff}.')
-                        if imgui.Button(u8'Стоп', imgui.ImVec2(335,30)) then
-                            work = false   
+                        if not loading then
+                            imgui.SetCursorPosY(150)
+                            imgui.SetCursorPosX(165)
+                            imadd.Spinner('##spinner', 12, 3, imgui.GetColorU32(imgui.GetStyle().Colors[imgui.Col.ButtonHovered]))
+                            imgui.CenterTextColoredRGB('Подождите. Идёт '.. (state == 1 and 'выгрузка' or 'загрузка') ..' транспорта {ffff00}' ..carname.. '{ffffff}.')
+                            if imgui.Button(u8'Стоп', imgui.ImVec2(335,30)) then
+                                work = false   
+                            end
+                        else
+                            imgui.SetCursorPosY(160)
+                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
+                            imgui.Button(u8'Загрузить', imgui.ImVec2(335,25))
+                            imgui.Button(u8(text_load), imgui.ImVec2(335,25))
                         end
                     end
                 else
@@ -1061,7 +1012,6 @@ function imgui.OnDrawFrame()
             if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажми, чтобы узнать информацию об обновлении.')) imgui.EndTooltip() end
             imgui.SameLine()
         end
-        
         imgui.SetCursorPosX(345)
         imgui.TextColoredRGB('{4169E1}S&D Scripts™')
         if imgui.IsItemClicked() then
