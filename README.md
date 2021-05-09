@@ -11,4 +11,4 @@ Usefull lua scripts for GTA SA:MP
 "Digits Separator" for any servers. / by STK  
 [EN] Separator of numbers by digits. Simplifies the appearance of large numbers.  
 [RU] Разделитель чисел по разрядам. Упрощает вид больших чисел.  
-[LINKS]  
+[LINKS] https://vk.cc/c1MwUc
