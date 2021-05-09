@@ -1,6 +1,6 @@
 script_author('S&D Scripts')
 script_name('Digits Separator')
-script_version('1.0')
+script_version('1.1')
 script_description("[EN] Separator of numbers by digits. Simplifies the appearance of large numbers.\n[RU] Разделитель чисел по разрядам. Упрощает вид больших чисел.")
 script_dependencies('SAMPFUNCS; SampEvents; Moonloader 0.26+')
 script_url('https://sd-scripts.ru')
@@ -12,14 +12,28 @@ function formatter(text)
         local v1, v2, v3 = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
         return (tonumber(n) == 0 and 0 or (v1 .. (v2:reverse():gsub('(%d%d%d)','%1.'):reverse()) .. v3))
     end
-    
-    if text:match('%$%d+%.0') or text:match('%d+%.0%$') then 
+
+    for v in string.gmatch(text, '[^\n]+') do
+        if v:match('%d+%$') or v:match('%$%d+') then
+            sampfuncsLog(v)
+        end
+    end
+
+    if text:match('%$%d+%.0$') or text:match('%d+%.0%$') then
         text = text:gsub('%.0', '')
+    elseif text:match('%d+%s%d+%$') then
+        text = string.gsub(text, '(%d+)(%s)(%d+%$)', '%1%3')    
+    elseif text:match('%d+%.%d+%$') then
+        text = text:gsub('%.', '')
+    elseif text:match('%$[0]+%d+') then
+        text = text:gsub(text:match('%$([0]+)%d+'), '')
+    -- elseif text:match('%d+%,%d+%$') then
+    --     text = text:gsub('%,', '')   
     end
 
     for S in text:gmatch('(%d+)%$') do text = string.gsub(text, S, comma(S), 1) end
     for S in text:gmatch('%$(%d+)') do text = string.gsub(text, S, comma(S), 1) end
-   
+    
     return text
 end
 
