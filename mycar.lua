@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.2.0')
-script_version_number(6) 
+script_version('1.2.1')
+script_version_number(7) 
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -93,7 +93,8 @@ function checkServer(ip)
         ['185.169.134.171'] = 'Glendale',
         ['185.169.134.172'] = 'Kingman',
         ['185.169.134.173'] = 'Winslow',
-        ['185.169.134.174'] = 'Payson'
+        ['185.169.134.174'] = 'Payson',
+        ['80.66.82.191'] = 'Gilbert'
     }
 	return tServers[ip]
 end
