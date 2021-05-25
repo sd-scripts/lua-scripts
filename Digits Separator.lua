@@ -1,6 +1,6 @@
 script_author('S&D Scripts')
 script_name('Digits Separator')
-script_version('1.1')
+script_version('1.2')
 script_description("[EN] Separator of numbers by digits. Simplifies the appearance of large numbers.\n[RU] Разделитель чисел по разрядам. Упрощает вид больших чисел.")
 script_dependencies('SAMPFUNCS; SampEvents; Moonloader 0.26+')
 script_url('https://sd-scripts.ru')
@@ -13,22 +13,15 @@ function formatter(text)
         return (tonumber(n) == 0 and 0 or (v1 .. (v2:reverse():gsub('(%d%d%d)','%1.'):reverse()) .. v3))
     end
 
-    for v in string.gmatch(text, '[^\n]+') do
-        if v:match('%d+%$') or v:match('%$%d+') then
-            sampfuncsLog(v)
-        end
-    end
-
-    if text:match('%$%d+%.0$') or text:match('%d+%.0%$') then
+    if text:find('%$%d+%.0$') or text:find('%d+%.0%$') then
         text = text:gsub('%.0', '')
-    elseif text:match('%d+%s%d+%$') then
-        text = string.gsub(text, '(%d+)(%s)(%d+%$)', '%1%3')    
-    elseif text:match('%d+%.%d+%$') then
+    elseif text:find('%d+%s%d+%$') or text:find('%d+%s%d+%s%d+%$') then
+        text = string.gsub(text, '(%d+)(%s)(%d+)(%s)(%d+%$)', '%1%3%5')   
+        text = string.gsub(text, '(%d+)(%s)(%d+%$)', '%1%3')
+    elseif text:find('%d+%.%d+%$') then
         text = text:gsub('%.', '')
-    elseif text:match('%$[0]+%d+') then
-        text = text:gsub(text:match('%$([0]+)%d+'), '')
-    -- elseif text:match('%d+%,%d+%$') then
-    --     text = text:gsub('%,', '')   
+    elseif text:find('%$[0]+%d+') then
+        text = text:gsub(text:match('%$([0]+)%d+'), '')  
     end
 
     for S in text:gmatch('(%d+)%$') do text = string.gsub(text, S, comma(S), 1) end
@@ -71,6 +64,13 @@ end
 function ev.onServerMessage(color, text)
     if text:find('%$') then
         return {color, formatter(text)}
+    end
+end
+
+function ev.onSetObjectMaterialText(id, data)
+	if data.text:find('%$%d+') then
+        data.text = data.text:gsub('%$%d+', formatter(data.text:match('(%$%d+)')))
+		return {id, data}
     end
 end
 
