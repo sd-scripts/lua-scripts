@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.2.1')
-script_version_number(7) 
+script_version('1.2.3')
+script_version_number(9)
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -9,8 +9,8 @@ local encoding    =   require 'encoding'
 local keys        =   require 'vkeys'
 local inicfg      =   require 'inicfg'
 
-local limadd, imadd 	= pcall(require, 'imgui_addons')
-local lrkeys, rkeys 	= pcall(require, 'rkeys')
+local limadd, imadd = pcall(require, 'imgui_addons')
+local lrkeys, rkeys = pcall(require, 'rkeys')
  
 encoding.default = 'CP1251'
 u8 = encoding.UTF8
@@ -32,7 +32,7 @@ local state = 0
 local bindID = 0
 local step = 0
 local font_flag = require('moonloader').font_flag
-local font = renderCreateFont("Arial", 10, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
+local font = renderCreateFont('Arial', 10, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
 
 local cfg = inicfg.load({
     CheckBox = {
@@ -43,11 +43,11 @@ local cfg = inicfg.load({
         hint = true
     },
     HotKey = {
-        lock = "[76]",
-        keys = "[75]",
-        main = "[18,77]",
-        interaction = "[88]",
-        style = "[71]"
+        lock = '[76]',
+        keys = '[75]',
+        main = '[18,77]',
+        interaction = '[88]',
+        style = '[71]'
     }
 }, 'MyCar')
 
@@ -78,25 +78,29 @@ local ActiveInteraction = {
 local tLastKeys = {}
 
 function checkServer(ip)
-    local tServers = {
-        ['185.169.134.3'] = 'Phoenix',
-        ['185.169.134.4'] = 'Tucson',
-        ['185.169.134.43'] = 'Scottdale',
-        ['185.169.134.44'] = 'Chandler',
-        ['185.169.134.45'] = 'Brainburg',
-        ['185.169.134.5'] = 'SaintRose',
-        ['185.169.134.59'] = 'Mesa',
-        ['185.169.134.61'] = 'Red Rock',
-        ['185.169.134.107'] = 'Yuma',
-        ['185.169.134.109'] = 'Surprise',
-        ['185.169.134.166'] = 'Prescott',
-        ['185.169.134.171'] = 'Glendale',
-        ['185.169.134.172'] = 'Kingman',
-        ['185.169.134.173'] = 'Winslow',
-        ['185.169.134.174'] = 'Payson',
-        ['80.66.82.191'] = 'Gilbert'
-    }
-	return tServers[ip]
+	for k, v in pairs({
+			['Phoenix'] 	= '185.169.134.3',
+			['Tucson'] 		= '185.169.134.4',
+			['Scottdale']	= '185.169.134.43',
+			['Chandler'] 	= '185.169.134.44', 
+			['Brainburg'] 	= '185.169.134.45',
+			['Saint Rose'] 	= '185.169.134.5',
+			['Mesa'] 		= '185.169.134.59',
+			['Red Rock'] 	= '185.169.134.61',
+			['Yuma'] 		= '185.169.134.107',
+			['Surprise'] 	= '185.169.134.109',
+			['Prescott'] 	= '185.169.134.166',
+			['Glendale'] 	= '185.169.134.171',
+			['Kingman'] 	= '185.169.134.172',
+			['Winslow'] 	= '185.169.134.173',
+			['Payson'] 		= '185.169.134.174',
+			['Gilbert']		= '80.66.82.191'
+		}) do
+		if v == ip then 
+			return true, k
+		end
+	end
+	return false
 end
 
 function sampev.onShowDialog(id, style, title, b1,b2,text)
@@ -127,7 +131,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         end
         
         command = '/keys'; id_dialog = 1162; cars_info = 'Чужой транспорт'
-        main_window.v = true
+        main_window.v = true; aboutmod, parkingmod, reloadmod, info_update = false
         sampSendDialogResponse(id, 0, nil, nil)
         return false
     end
@@ -220,26 +224,20 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         for v in string.gmatch(text, '[^\n]+') do
             if v:match('%[Не загружено%]') then
                 t = {
-                    name = v:match('%{F05959%}%[Не загружено%]%{FFFFFF%}%s+(%w+)'),
+                    name = v:match('%{......%}%[Не загружено%]%{FFFFFF%}%s+([%w%s]+)\t'),
                     id = i,
                     spawn = false
                 }
             elseif v:match('%[Штрафстоянка%]') then
                 t = {
-                    name = v:match('%{......%}%[Штрафстоянка%]%{FFFFFF%}%s+(%w+)'),
+                    name = v:match('%{......%}%[Штрафстоянка%]%{FFFFFF%}%s+([%w%s]+)\t'),
                     id = i,
                     spawn = false,
                     pfine = true
                 }
-            elseif v:match('%{FFFFFF%} %w+') then
+            elseif v:match('%s[%w%-%s]+%(%d+%)') then
                 t = {
-                    name = v:match('%{FFFFFF%}%s+(.+)%('),
-                    id = i,
-                    spawn = true
-                }
-            else
-                t = {
-                    name = v:match('%s+(.+)%('),
+                    name = v:match('%s([%w%-%s]+)%(%d+%)'):gsub('^%s',''),
                     id = i,
                     spawn = true
                 }
@@ -261,7 +259,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         else
             command = '/cars'; id_dialog = 162; cars_info = 'Мой транспорт'
             if not target_window.v and not work then 
-                main_window.v = true 
+                main_window.v = true; aboutmod, parkingmod, reloadmod, info_update = false 
             end
         end
         sampSendDialogResponse(id, 0, nil, nil)
@@ -376,7 +374,6 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                     carid = nil
                 end
             else
-                --sampSendDialogResponse(163, 0, nil, nil)
                 for v in string.gmatch(text, '[^\n]+') do
                     if v:find('Загружать при авторизации') or v:find('Не загружать при авторизации') then text_load = v end
                 end
@@ -399,8 +396,8 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             mileage = text:match('Пробег%: %{73B461%}(%d+ км.)%{FFFFFF%}'),
             tax = text:match('Налог%: %{73B461%}(%d+)%{FFFFFF%} %/ 150 000'),
             fine = text:match('Штраф%: %{73B461%}(%d+)%{FFFFFF%} %/ 80 000'),
-            recovery_penalty = text:match('Штраф за восстановление%: %{73B461%}($%d+)%{FFFFFF%}'),
-            price = text:match('Цена покупки с госа%:%s%{......%}($.+).+Номер'),
+            recovery_penalty = text:match('Штраф за восстановление%: %{73B461%}($[%d%.]+)%{FFFFFF%}'):gsub('%.',''),
+            price = text:match('Цена покупки с госа%:%s%{......%}($[%d%.]+)'):gsub('%.',''),
             car_number = text:match('Номер автомобиля%:.+{......}(.+){......}.+Здоровье'),
             car_health_min = text:match('Здоровье автомобиля%: %{F57449%}(%d+.%d)/%d+.%d%{FFFFFF%}'),
             car_health_max = text:match('Здоровье автомобиля%: %{F57449%}%d+.%d/(%d+.%d)%{FFFFFF%}'),
@@ -414,6 +411,11 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         sampSendDialogResponse(id, 0, nil, nil)
         return false
     end
+end
+
+function comma(n)
+    local v1, v2, v3 = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
+    return (tonumber(n) == 0 and 0 or (v1 .. (v2:reverse():gsub('(%d%d%d)','%1.'):reverse()) .. v3))
 end
 
 function refueling()
@@ -459,10 +461,10 @@ function sampev.onServerMessage(color,text)
         sampSendChat('/key'); sampSendChat('/engine') 
         return false 
     end
-    if text:find('Вы не в своем авто') and CheckBox['key'].v then 
+    if text:find('Вы не в своем авто') and (CheckBox['key'].v or CheckBox['enter'].v) then 
         lua_thread.create(function()
             CheckBox['key'].v = false
-            wait(700)
+            wait(300)
             CheckBox['key'].v = true
         end)
         return false 
@@ -499,9 +501,9 @@ function main()
     
     while not sampIsLocalPlayerSpawned() do wait(120) end
     
-    nameServ = checkServer(select(1, sampGetCurrentServerAddress()))
+    local result, nameServ = checkServer(select(1, sampGetCurrentServerAddress()))
     
-    if not nameServ then
+    if not result then
 		print('{ff0000}Ошибка: {ffffff}скрипт работает только на проекте {FA8072}Arizona RP.')
 		thisScript():unload()
     end
@@ -565,7 +567,7 @@ function vehicle.check()
                         vehicle.state = true
                         vehicle.time = os.clock() + 1
                         vehicle.i.model = getCarModel(v)
-                        if not target_window.v and CheckBox['hint'].v then renderFontDrawText(font, '( '..table.concat(rkeys.getKeysName(ActiveInteraction.v), " + ")..' )', x, y, 0xFFA9A9A9) end
+                        if not target_window.v and CheckBox['hint'].v then renderFontDrawText(font, '( '..table.concat(rkeys.getKeysName(ActiveInteraction.v), ' + ')..' )', x, y, 0xFFA9A9A9) end
                     end
                 end
             end
@@ -592,7 +594,7 @@ function target.check()
             local distance = getDistanceBetweenCoords3d(x1,y1,z1,x,y,z) -- вычисление дистанции от выделенного игрока до локального
             if (pID >= 0 and pID <= 1000) and (distance <= 2) then
                 if CheckBox['hint'].v then
-                    sampCreate3dTextEx(777, '( '..table.concat(rkeys.getKeysName(ActiveInteraction.v), " + ")..' )', 0xffA9A9A9, 0, 0, -0.75, 7, false, pID, -1)
+                    sampCreate3dTextEx(777, '( '..table.concat(rkeys.getKeysName(ActiveInteraction.v), ' + ')..' )', 0xffA9A9A9, 0, 0, -0.75, 7, false, pID, -1)
                 end
                 target.i.id, target.i.name, target.i.lvl = pID, sampGetPlayerNickname(pID), sampGetPlayerScore(pID)
                 target.state = true
@@ -625,12 +627,69 @@ function onWindowMessage(msg, wparam, lparam)
 end
 
 function sampGetVehicleModelById(vehicleId) -- функция получения имени транспорта по его локальному id
-    local ovehicleNames = {"Landstalker","Bravura","Buffalo","Linerunner","Perrenial","Sentinel","Dumper","Firetruck","Trashmaster","Stretch","Manana","Infernus","Voodoo","Pony","Mule","Cheetah","Ambulance","Leviathan","Moonbeam","Esperanto","Taxi","Washington","Bobcat","Whoopee","BFInjection","Hunter","Premier","Enforcer","Securicar","Banshee","Predator","Bus","Rhino","Barracks","Hotknife","Trailer","Previon","Coach","Cabbie","Stallion","Rumpo","RCBandit","Romero","Packer","Monster","Admiral","Squalo","Seasparrow","Pizzaboy","Tram","Trailer","Turismo","Speeder","Reefer","Tropic","Flatbed","Yankee","Caddy","Solair","BerkleysRCVan","Skimmer","PCJ-600","Faggio","Freeway","RCBaron","RCRaider","Glendale","Oceanic","Sanchez","Sparrow","Patriot","Quad","Coastguard","Dinghy","Hermes","Sabre","Rustler","ZR-350","Walton","Regina","Comet","BMX","Burrito","Camper","Marquis","Baggage","Dozer","Maverick","NewsChopper","Rancher","FBIRancher","Virgo","Greenwood","Jetmax","Hotring","Sandking","BlistaCompact","PoliceMaverick","Boxvillde","Benson","Mesa","RCGoblin","HotringRacerA","HotringRacerB","BloodringBanger","Rancher","SuperGT","Elegant","Journey","Bike","MountainBike","Beagle","Cropduster","Stunt","Tanker","Roadtrain","Nebula","Majestic","Buccaneer","Shamal","hydra","FCR-900","NRG-500","HPV1000","CementTruck","TowTruck","Fortune","Cadrona","FBITruck","Willard","Forklift","Tractor","Combine","Feltzer","Remington","Slamvan","Blade","Freight","Streak","Vortex","Vincent","Bullet","Clover","Sadler","Firetruck","Hustler","Intruder","Primo","Cargobob","Tampa","Sunrise","Merit","Utility","Nevada","Yosemite","Windsor","Monster","Monster","Uranus","Jester","Sultan","Stratum","Elegy","Raindance","RCTiger","Flash","Tahoma","Savanna","Bandito","FreightFlat","StreakCarriage","Kart","Mower","Dune","Sweeper","Broadway","Tornado","AT-400","DFT-30","Huntley","Stafford","BF-400","NewsVan","Tug","Trailer","Emperor","Wayfarer","Euros","Hotdog","Club","FreightBox","Trailer","Andromada","Dodo","RCCam","Launch","PoliceCar","PoliceCar","PoliceCar","PoliceRanger","Picador","S.W.A.T","Alpha","Phoenix","GlendaleShit","SadlerShit","Luggage","Luggage","Stairs","Boxville","Tiller","UtilityTrailer"}
-    if vehicleId then
-        local id = vehicleId - 399
-        vehicleName = ovehicleNames[id]
-    end
-    return vehicleName or 'Не определено'
+    local ovehicleNames = {
+        -- SA:MP VEHICLE
+        [400] = 'Landstalker', [401] = 'Bravura', [402] = 'Buffalo', [403] = 'Linerunner', [404] = 'Perrenial',
+        [405] = 'Sentinel', [406] = 'Dumper', [407] = 'Firetruck', [408] = 'Trashmaster', [409] = 'Stretch',
+        [410] = 'Manana', [411] = 'Infernus',  [412] = 'Voodoo', [413] = 'Pony', [414] = 'Mule',
+        [415] = 'Cheetah', [416] = 'Ambulance', [417] = 'Leviathan', [418] = 'Moonbeam', [419] = 'Esperanto',
+        [420] = 'Taxi', [421] = 'Washington',  [422] = 'Bobcat', [423] = 'Whoopee', [424] = 'BF Injection',
+        [425] = 'Hunter', [426] = 'Premier', [427] = 'Enforcer', [428] = 'Securicar', [429] = 'Banshee',
+        [430] = 'Predator', [431] = 'Bus', [432] = 'Rhino', [433] = 'Barracks', [434] = 'Hotknife',
+        [435] = 'Article Trailer', [436] = 'Previon', [437] = 'Coach', [438] = 'Cabbie', [439] = 'Stallion',
+        [440] = 'Rumpo', [441] = 'RC Bandit', [442] = 'Romero', [443] = 'Packer', [444] = 'Monster',
+        [445] = 'Admiral', [446] = 'Squalo', [447] = 'Seasparrow', [448] = 'Pizzaboy', [449] = 'Tram',
+        [450] = 'Article Trailer 2', [451] = 'Turismo', [452] = 'Speeder', [453] = 'Reefer', [454] = 'Tropic',
+        [455] = 'Flatbed', [456] = 'Yankee', [457] = 'Caddy', [458] = 'Solair', [459] = 'Topfun Van',
+        [460] = 'Skimmer', [461] = 'PCJ-600', [462] = 'Faggio', [463] = 'Freeway', [464] = 'RC Baron',
+        [465] = 'RC Raider', [466] = 'Glendale', [467] = 'Oceanic', [468] = 'Sanchez', [469] = 'Sparrow',
+        [470] = 'Patriot', [471] = 'Quad', [472] = 'Coastguard', [473] = 'Dinghy', [474] = 'Hermes',
+        [475] = 'Sabre', [476] = 'Rustler', [477] = 'ZR-350', [478] = 'Walton', [479] = 'Regina',
+        [480] = 'Comet', [481] = 'BMX', [482] = 'Burrito', [483] = 'Camper', [484] = 'Marquis',
+        [485] = 'Baggage', [486] = 'Dozer', [487] = 'Maverick', [488] = 'News Maverick', [489] = 'Rancher',
+        [490] = 'FBI Rancher', [491] = 'Virgo', [492] = 'Greenwood', [493] = 'Jetmax', [494] = 'Hotring Racer',
+        [495] = 'Sandking', [496] = 'Blista Compact', [497] = 'Police Maverick', [498] = 'Boxvillde', [499] = 'Benson',
+        [500] = 'Mesa', [501] = 'RCGoblin', [502] = 'Hotring Racer A', [503] = 'Hotring Racer B', [504] = 'Bloodring Banger',
+        [505] = 'Rancher', [506] = 'SuperGT', [507] = 'Elegant', [508] = 'Journey', [509] = 'Bike',
+        [510] = 'Mountain Bike', [511] = 'Beagle', [512] = 'Cropduster', [513] = 'Stunt', [514] = 'Tanker',
+        [515] = 'Roadtrain', [516] = 'Nebula', [517] = 'Majestic', [518] = 'Buccaneer', [519] = 'Shamal',
+        [520] = 'Hydra', [521] = 'FCR-900', [522] = 'NRG-500', [523] = 'HPV1000', [524] = 'Cement Truck',
+        [525] = 'TowTruck', [526] = 'Fortune', [527] = 'Cadrona', [528] = 'FBI Truck', [529] = 'Willard',
+        [530] = 'Forklift', [531] = 'Tractor', [532] = 'Combine', [533] = 'Feltzer', [534] = 'Remington',
+        [535] = 'Slamvan', [536] = 'Blade', [537] = 'Freight', [538] = 'Streak', [539] = 'Vortex',
+        [540] = 'Vincent', [541] = 'Bullet', [542] = 'Clover', [543] = 'Sadler', [544] = 'Firetruck',
+        [545] = 'Hustler', [546] = 'Intruder', [547] = 'Primo', [548] = 'Cargobob', [549] = 'Tampa',
+        [550] = 'Sunrise', [551] = 'Merit', [552] = 'Utility Van', [553] = 'Nevada', [554] = 'Yosemite',
+        [555] = 'Windsor', [556] = 'Monster', [557] = 'Monster', [558] = 'Uranus', [559] = 'Jester',
+        [560] = 'Sultan', [561] = 'Stratum', [562] = 'Elegy', [563] = 'Raindance', [564] = 'RC Tiger',
+        [565] = 'Flash', [566] = 'Tahoma', [567] = 'Savanna', [568] = 'Bandito', [569] = 'Freight Flat Trailer',
+        [570] = 'Streak Trailer', [571] = 'Kart', [572] = 'Mower', [573] = 'Dune', [574] = 'Sweeper',
+        [575] = 'Broadway', [576] = 'Tornado', [577] = 'AT400', [578] = 'DFT-30', [579] = 'Huntley',
+        [580] = 'Stafford', [581] = 'BF-400', [582] = 'NewsVan', [583] = 'Tug', [584] = 'Petrol Trailer',
+        [585] = 'Emperor', [586] = 'Wayfarer', [587] = 'Euros', [588] = 'Hotdog', [589] = 'Club',
+        [590] = 'Freight Box Trailer', [591] = 'Article Trailer 3', [592] = 'Andromada', [593] = 'Dodo', [594] = 'RC Cam',
+        [595] = 'Launch', [596] = 'Police Car (LSPD)', [597] = 'Police Car (SFPD)', [598] = 'Police Car (LVPD)', [599] = 'Police Ranger',
+        [600] = 'Picador', [601] = 'S.W.A.T.', [602] = 'Alpha', [603] = 'Phoenix', [604] = 'Glendale Shit',
+        [605] = 'Sadler Shit', [606] = 'Baggage Trailer "A"', [607] = 'Baggage Trailer "B"', [608] = 'Tug Stairs Trailer', [609] = 'Boxville',
+        [610] = 'Farm Trailer', [611] = 'Utility Trailer',
+        -- ARIZONA VEHICLES
+        [612] = 'Mercedes GT63s AMG', [613] = 'Mercedes G63 AMG', [614] = 'Audi RS6', [662] = 'BMW X5', [663] = 'Chevrolet Corvette', 
+        [665] = 'Chevrolet Cruze', [666] = 'Lexus LX', [667] = 'Porsche 911', [668] = 'Porsche Cayenne', [699] = 'Bentley Continental', 
+        [793] = 'BMW M8', [794] = 'Mercedes E63s AMG', [909] = 'Mercedes S63', [965] = 'Volkswagen Tuareg', [1194] = 'Lamborghini Urus',
+        [1195] = 'aqeight', [1196] = 'Dodge Challenger', [1197] = 'Acura NSX', [1198] = 'volvov', [1199] = 'Range Rover', 
+        [1200] = 'civtr', [1201] = 'lexis', [1202] = 'Ford Mustang', [1203] = 'volvoxc', [1204] = 'Jaguar F-Pace',
+        [1205] = 'KIA Optima', [3155] = 'bmwzf', [3156] = 'kaban', [3157] = 'bmwxf', [3158] = 'Lexus RX 450h',
+        [3194] = 'Ducati Daivel', [3195] = 'Ducati Panigale', [3196] = 'Ducati Ducnaked', [3197] = 'Kawasaki Ninja ZX-10RR', [3198] = 'Western',
+        [3199] = 'Rolls-Royce Cullinan', [3200] = 'Volkswagen Beetle', [3201] = 'Bugatti Divo', [3202] = 'Bugatti Chiron', [3203] = 'Fiat 500',
+        [3204] = 'Mercedes GLS 2020', [3205] = 'huntold', [3206] = 'lambsvj', [3207] = 'Range Rover SVA', [3208] = 'BMW 530i',
+        [3209] = 'mbw221', [3210] = 'Tesla Model X', [3211] = 'nisleaf', [3212] = 'Nissan Silvia', [3213] = 'Subaru Forester',
+        [3215] = 'Subaru Legasy', [3216] = 'Hyundai Sonata',  [3217] = 'BMW E38', [3218] = 'mbe55', [3219] = 'mbe500',
+        [3220] = 'jstorm', [3222] = 'lightmcq', [3223] = 'mater', [3224] = 'Buckingham', [3232] = 'Infinity FX 50',
+        [3233] = 'Lexus RX', [3234] = 'KIA Sportage', [3235] = 'Volkswagen Golf R', [3236] = 'Audi R8', [3237] = 'Toyota Camry XV40',
+        [3238] = 'Toyota Camry XV70', [3239] = 'BMW M5 E60', [3240] = 'BMW M5 F90', [3245] = 'Mercedes Maybach S650', [3247] = 'mbamggt',
+        [3248] = 'Porsche Panamera Turbo', [3251] = 'Volkswagen Passat', [3254] = 'Chevrolet Corvett 1980', [3266] = 'Dodge SRT', [3348] = 'Ford Mustang GT500'
+    }
+    return ovehicleNames[vehicleId] or 'Не определено'
 end
 
 function getClosestCarId() -- функция получения серверного id транспорта
@@ -663,6 +722,7 @@ function imgui.OnDrawFrame()
         if vehicle.state then
             imgui.CenterTextColoredRGB('{FFD848}' .. sampGetVehicleModelById(vehicle.i.model) .. '[' .. getClosestCarId() .. ']')
             imgui.SetCursorPosY(60)
+            if imgui.Button(u8'Открыть/закрыть', imgui.ImVec2(175,25)) then sampSendChat('/lock') end
             if imgui.Button(u8'Отремонтировать', imgui.ImVec2(175,25)) then sampSendChat('/repcar'); target_window.v = false end
             if imgui.Button(u8'Заправить канистрой', imgui.ImVec2(175,25)) then sampSendChat('/fillcar'); target_window.v = false end
             if imgui.Button(u8'Взломать замок', imgui.ImVec2(175,25)) then sampSendChat('/breakcar'); target_window.v = false end
@@ -768,19 +828,19 @@ function imgui.OnDrawFrame()
                 if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
 				
                 imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
-                if imadd.HotKey("##menu", ActiveMenus, tLastKeys, 80) then
+                if imadd.HotKey('##menu', ActiveMenus, tLastKeys, 80) then
                     rkeys.changeHotKey(bindMenu, ActiveMenus.v)
                     cfg.HotKey.main = encodeJson(ActiveMenus.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
                 imgui.SameLine(); imgui.Text(u8' -   открыть меню скрипта (/cars)')
-                if imadd.HotKey("##lock", ActiveLock, tLastKeys, 80) then
+                if imadd.HotKey('##lock', ActiveLock, tLastKeys, 80) then
                     rkeys.changeHotKey(bindLock, ActiveLock.v)
 					cfg.HotKey.lock = encodeJson(ActiveLock.v)
 					inicfg.save(cfg, 'MyCar.ini')
                 end
                 imgui.SameLine(); imgui.Text(u8' -   открыть/закрыть транспорт (/lock)')
-                if imadd.HotKey("##key", ActiveKey, tLastKeys, 80) then
+                if imadd.HotKey('##key', ActiveKey, tLastKeys, 80) then
                     rkeys.changeHotKey(bindKey, ActiveKey.v)
 					cfg.HotKey.keys = encodeJson(ActiveKey.v)
 					inicfg.save(cfg, 'MyCar.ini')
@@ -792,7 +852,7 @@ function imgui.OnDrawFrame()
                     inicfg.save(cfg, 'MyCar.ini')
                 end
                 imgui.SameLine(); imgui.Text(u8' -   изменить стиль езды (/style)')
-                if imadd.HotKey("##interaction", ActiveInteraction, tLastKeys, 80) then
+                if imadd.HotKey('##interaction', ActiveInteraction, tLastKeys, 80) then
                     rkeys.changeHotKey(bindInteraction, ActiveInteraction.v)
                     if ActiveInteraction.v[2] then ActiveInteraction.v = tLastKeys.v end
 					cfg.HotKey.interaction = encodeJson(ActiveInteraction.v)
@@ -866,7 +926,7 @@ function imgui.OnDrawFrame()
                     imgui.Separator()
                     imgui.Columns(2)
                     local arrayText = {'Владелец', 'Посредник', 'Пробег', 'Налог', 'Штраф', 'Штраф за восстановление', 'Государственная стоимость', 'Государственный номер', 'Здоровье', 'Техническое состояние', 'Состояние масла', 'Страховка (на повреждение)', 'Страховка (на слёт)'}
-                    local arrayInfo = {car_info[1] and car_info[1].owner or '--', car_info[1] and car_info[1].intermediary or '--', car_info[1] and car_info[1].mileage or '--', car_info[1] and car_info[1].tax.. ' из 150000' or '--', car_info[1] and car_info[1].fine.. ' из 80000' or '--', car_info[1] and car_info[1].recovery_penalty or '--', car_info[1] and car_info[1].price or '--', car_info[1] and car_info[1].car_number or '--', car_info[1] and car_info[1].car_health_min.. ' / ' ..car_info[1].car_health_max or '--', car_info[1] and car_info[1].state.. ' / 100' or '--', car_info[1] and car_info[1].oil or '--', car_info[1] and car_info[1].insurance_damage or '--', car_info[1] and car_info[1].insurance_meeting or 'отсутствует'}
+                    local arrayInfo = {car_info[1] and car_info[1].owner or '--', car_info[1] and car_info[1].intermediary or '--', car_info[1] and car_info[1].mileage or '--', car_info[1] and car_info[1].tax.. ' из 150000' or '--', car_info[1] and car_info[1].fine.. ' из 80000' or '--', car_info[1] and comma(car_info[1].recovery_penalty) or '--', car_info[1] and comma(car_info[1].price) or '--', car_info[1] and car_info[1].car_number or '--', car_info[1] and car_info[1].car_health_min.. ' / ' ..car_info[1].car_health_max or '--', car_info[1] and car_info[1].state.. ' / 100' or '--', car_info[1] and car_info[1].oil or '--', car_info[1] and car_info[1].insurance_damage or '--', car_info[1] and car_info[1].insurance_meeting or 'отсутствует'}
                     for i = 1, 13 do
                         imgui.SetColumnWidth(-1, 170); imgui.CenterColumnText(u8(arrayText[i])); imgui.NextColumn()
                         imgui.SetColumnWidth(-1, 150); imgui.CenterColumnText(u8(tostring(arrayInfo[i]))); imgui.NextColumn()
