@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.2.3')
-script_version_number(9)
+script_version('1.2.4')
+script_version_number(10) 
  
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -224,20 +224,26 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         for v in string.gmatch(text, '[^\n]+') do
             if v:match('%[Не загружено%]') then
                 t = {
-                    name = v:match('%{......%}%[Не загружено%]%{FFFFFF%}%s+([%w%s]+)\t'),
+                    name = v:match('%{......%}%[Не загружено%]%{......%}%s+(.+)\t'),
                     id = i,
                     spawn = false
                 }
             elseif v:match('%[Штрафстоянка%]') then
                 t = {
-                    name = v:match('%{......%}%[Штрафстоянка%]%{FFFFFF%}%s+([%w%s]+)\t'),
+                    name = v:match('%{......%}%[Штрафстоянка%]%{......%}%s+(.+)\t'),
                     id = i,
                     spawn = false,
                     pfine = true
                 }
-            elseif v:match('%s[%w%-%s]+%(%d+%)') then
+            elseif v:match('{......}%s.+%(%d+%)\t') then
                 t = {
-                    name = v:match('%s([%w%-%s]+)%(%d+%)'):gsub('^%s',''),
+                    name = v:match('{......}%s(.+)%(%d+%)\t'),
+                    id = i,
+                    spawn = true
+                }
+            elseif v:match('%s.+%(%d+%)\t') then
+                t = {
+                    name = v:match('%s(.+)%(%d+%)\t'):gsub('^%s',''),
                     id = i,
                     spawn = true
                 }
@@ -396,8 +402,8 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             mileage = text:match('Пробег%: %{73B461%}(%d+ км.)%{FFFFFF%}'),
             tax = text:match('Налог%: %{73B461%}(%d+)%{FFFFFF%} %/ 150 000'),
             fine = text:match('Штраф%: %{73B461%}(%d+)%{FFFFFF%} %/ 80 000'),
-            recovery_penalty = text:match('Штраф за восстановление%: %{73B461%}($[%d%.]+)%{FFFFFF%}'):gsub('%.',''),
-            price = text:match('Цена покупки с госа%:%s%{......%}($[%d%.]+)'):gsub('%.',''),
+            recovery_penalty = text:match('Штраф за восстановление%: %{73B461%}($.+)%{FFFFFF%}.+Цена покупки'):gsub('%.',''):gsub('%,',''):gsub('%s', ''),
+            price = text:match('Цена покупки с госа%:%s%{......%}($[%-%d%.%,]+)'):gsub('%.',''):gsub('%,',''),
             car_number = text:match('Номер автомобиля%:.+{......}(.+){......}.+Здоровье'),
             car_health_min = text:match('Здоровье автомобиля%: %{F57449%}(%d+.%d)/%d+.%d%{FFFFFF%}'),
             car_health_max = text:match('Здоровье автомобиля%: %{F57449%}%d+.%d/(%d+.%d)%{FFFFFF%}'),
@@ -419,9 +425,9 @@ function comma(n)
 end
 
 function refueling()
-    wait(50)
+    wait(100)
     sampSendClickTextdraw(idtextdraw_change)
-    wait(30)
+    wait(130)
     sampSendClickTextdraw(idtextdraw_fill)
 end
 
@@ -457,9 +463,13 @@ function sampev.onServerMessage(color,text)
     end
     if text:find('вытащил%(а%) ключи из замка зажигания') or text:find('вставил%(а%) ключи в замок зажигания') then key_state = not key_state end
     if text:find('Загрузить транспорт не удалось') then return false end
-    if text:find('Ключи не вставлены') and CheckBox['enter'].v then
-        sampSendChat('/key'); sampSendChat('/engine') 
-        return false 
+    if CheckBox['enter'].v then
+        if text:find('Ключи не вставлены') then
+            lua_thread.create(function()
+                sampSendChat('/key'); wait(600); sampSendChat('/engine')
+            end)
+            return false 
+        end
     end
     if text:find('Вы не в своем авто') and (CheckBox['key'].v or CheckBox['enter'].v) then 
         lua_thread.create(function()
@@ -490,9 +500,9 @@ function main()
             if f then
                 data = decodeJson(f:read('a*'));
                 f:close();
-                os.remove(update_file)
             end
         end
+        os.remove(update_file)
     end)
 
     if not doesFileExist('moonloader/config/MyCar.ini') then
@@ -675,18 +685,18 @@ function sampGetVehicleModelById(vehicleId) -- функция получения имени транспорт
         -- ARIZONA VEHICLES
         [612] = 'Mercedes GT63s AMG', [613] = 'Mercedes G63 AMG', [614] = 'Audi RS6', [662] = 'BMW X5', [663] = 'Chevrolet Corvette', 
         [665] = 'Chevrolet Cruze', [666] = 'Lexus LX', [667] = 'Porsche 911', [668] = 'Porsche Cayenne', [699] = 'Bentley Continental', 
-        [793] = 'BMW M8', [794] = 'Mercedes E63s AMG', [909] = 'Mercedes S63', [965] = 'Volkswagen Tuareg', [1194] = 'Lamborghini Urus',
+        [793] = 'BMW M8', [794] = 'Mercedes E63s AMG', [909] = 'Mercedes S63 Coupe AMG', [965] = 'Volkswagen Tuareg', [1194] = 'Lamborghini Urus',
         [1195] = 'aqeight', [1196] = 'Dodge Challenger', [1197] = 'Acura NSX', [1198] = 'volvov', [1199] = 'Range Rover', 
-        [1200] = 'civtr', [1201] = 'lexis', [1202] = 'Ford Mustang', [1203] = 'volvoxc', [1204] = 'Jaguar F-Pace',
-        [1205] = 'KIA Optima', [3155] = 'bmwzf', [3156] = 'kaban', [3157] = 'bmwxf', [3158] = 'Lexus RX 450h',
+        [1200] = 'Honda Civic Type-R', [1201] = 'Lexus Sport-S', [1202] = 'Ford Mustang', [1203] = 'volvoxc', [1204] = 'Jaguar F-Pace',
+        [1205] = 'KIA Optima', [3155] = 'bmwzf', [3156] = 'kaban', [3157] = 'bmwxf', [3158] = 'Lexus RX',
         [3194] = 'Ducati Daivel', [3195] = 'Ducati Panigale', [3196] = 'Ducati Ducnaked', [3197] = 'Kawasaki Ninja ZX-10RR', [3198] = 'Western',
         [3199] = 'Rolls-Royce Cullinan', [3200] = 'Volkswagen Beetle', [3201] = 'Bugatti Divo', [3202] = 'Bugatti Chiron', [3203] = 'Fiat 500',
-        [3204] = 'Mercedes GLS 2020', [3205] = 'huntold', [3206] = 'lambsvj', [3207] = 'Range Rover SVA', [3208] = 'BMW 530i',
+        [3204] = 'Mercedes-Benz GLS 2020', [3205] = 'Mercedes-AMG G65 AMG', [3206] = 'Lamborghini Aventador', [3207] = 'Range Rover SVA', [3208] = 'BMW 530i',
         [3209] = 'mbw221', [3210] = 'Tesla Model X', [3211] = 'nisleaf', [3212] = 'Nissan Silvia', [3213] = 'Subaru Forester',
         [3215] = 'Subaru Legasy', [3216] = 'Hyundai Sonata',  [3217] = 'BMW E38', [3218] = 'mbe55', [3219] = 'mbe500',
         [3220] = 'jstorm', [3222] = 'lightmcq', [3223] = 'mater', [3224] = 'Buckingham', [3232] = 'Infinity FX 50',
-        [3233] = 'Lexus RX', [3234] = 'KIA Sportage', [3235] = 'Volkswagen Golf R', [3236] = 'Audi R8', [3237] = 'Toyota Camry XV40',
-        [3238] = 'Toyota Camry XV70', [3239] = 'BMW M5 E60', [3240] = 'BMW M5 F90', [3245] = 'Mercedes Maybach S650', [3247] = 'mbamggt',
+        [3233] = 'Lexus RX 450h', [3234] = 'KIA Sportage', [3235] = 'Volkswagen Golf R', [3236] = 'Audi R8', [3237] = 'Toyota Camry XV40',
+        [3238] = 'Toyota Camry XV70', [3239] = 'BMW M5 E60', [3240] = 'BMW M5 F90', [3245] = 'Mercedes Maybach S650', [3247] = 'Mercedes-Benz AMG GT',
         [3248] = 'Porsche Panamera Turbo', [3251] = 'Volkswagen Passat', [3254] = 'Chevrolet Corvett 1980', [3266] = 'Dodge SRT', [3348] = 'Ford Mustang GT500'
     }
     return ovehicleNames[vehicleId] or 'Не определено'
