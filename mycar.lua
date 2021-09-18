@@ -1,17 +1,20 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.2.4')
-script_version_number(10) 
- 
+script_version('1.4.0')
+script_version_number(15) 
+
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
 local encoding    =   require 'encoding'
 local keys        =   require 'vkeys'
 local inicfg      =   require 'inicfg'
+local fa          =   require 'fAwesome5'
+local ffi         =   require 'ffi'
+local memory      =   require 'memory'
 
 local limadd, imadd = pcall(require, 'imgui_addons')
 local lrkeys, rkeys = pcall(require, 'rkeys')
- 
+
 encoding.default = 'CP1251'
 u8 = encoding.UTF8
 
@@ -20,9 +23,16 @@ local cars = {}
 local car_info = {}
 local target = {i={},state=false}
 local vehicle = {i={},state=false}
+local wBox, hBox = 240, 90
+
+local use_jack = false
+local page = 1
+local one_page = 0
 
 local main_window = imgui.ImBool(false)
 local target_window = imgui.ImBool(false)
+local balon_window = imgui.ImBool(false)
+local price_car = imgui.ImBuffer('', 256)
 local work = false
 local working = false
 local unloading_cars = false
@@ -33,6 +43,9 @@ local bindID = 0
 local step = 0
 local font_flag = require('moonloader').font_flag
 local font = renderCreateFont('Arial', 10, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
+local fontText = renderCreateFont('Arial', 8, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
+local fontSpeed = renderCreateFont('Arial', 25, font_flag.BOLD + font_flag.SHADOW + font_flag.BORDER)
+local clrBalon = {}
 
 local cfg = inicfg.load({
     CheckBox = {
@@ -47,7 +60,10 @@ local cfg = inicfg.load({
         keys = '[75]',
         main = '[18,77]',
         interaction = '[88]',
-        style = '[71]'
+        style = '[71]',
+        limit = '[186]',
+        mouse = '[45]',
+        jack = '[48]'
     }
 }, 'MyCar')
 
@@ -74,8 +90,101 @@ local ActiveStyle = {
 local ActiveInteraction = {
 	v = decodeJson(cfg.HotKey.interaction)
 }
+local ActiveLimit = {
+    v = decodeJson(cfg.HotKey.limit)
+}
+local ActiveMouse = {
+    v = decodeJson(cfg.HotKey.mouse)
+}
+local ActiveJack = {
+    v = decodeJson(cfg.HotKey.jack)
+}
 
 local tLastKeys = {}
+
+local fa_font = nil
+local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
+
+function imgui.BeforeDrawFrame()
+    if fa_font == nil then
+        local font_config = imgui.ImFontConfig() -- to use 'imgui.ImFontConfig.new()' on error
+        font_config.MergeMode = true
+        fa_font = imgui.GetIO().Fonts:AddFontFromFileTTF('moonloader/resource/fonts/fa-solid-900.ttf', 12.0, font_config, fa_glyph_ranges)
+    end
+end
+
+function Speedometer()
+    while true do wait(0)
+        if isCharInAnyCar(PLAYER_PED) and pauseMenu() ~= 1 then
+            if not stop_render then
+                local carhandle = storeCarCharIsInNoSave(PLAYER_PED)
+                local idcar = getCarModel(carhandle)
+                local AirVehicle = {417, 425, 447, 469, 487, 488, 497, 548, 563, 3224}
+                for i = 1, #AirVehicle do
+                    if idcar == AirVehicle[i] then
+                        local sw, sh = getScreenResolution()
+                        local posX, posY = sw - 250, sh - 100
+                        local model = sampGetVehicleModelById(idcar)
+                        local id = select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED)))
+                        local speed = string.format("%.0f",getCarSpeed(storeCarCharIsInNoSave(PLAYER_PED)) * 3.6)
+                        renderDrawBoxWithBorder(posX, posY, wBox, hBox, 0xFF696969, 5, 0xFFC0C0C0)
+                        renderDrawLine(posX + 20, posY + 45, posX + 255, posY + 45, 40, 0xAAAAAAAA)
+                        renderDrawLine(posX + 18, posY + 45, posX + 92, posY + 45, 17, 0xFFFFFFFF) -- // Полоска жизней
+                        renderDrawLine(posX + 163, posY + 45, posX + 235, posY + 45, 15, 0xFFFFFFFF)
+                        renderFontDrawTextCenter(font, model .. '(' ..id.. ')', posX + (wBox / 2), posY + 6, 0xFFFFFFFF)
+                        -- // SPEED //
+                        local speedLenght = string.len(speed)
+                        if speedLenght == 1 then
+                            backSpeed = '00'
+                            backPosX, fontPosX = 20, 57
+                        elseif speedLenght == 2 then
+                            backSpeed = '0'
+                            backPosX, fontPosX = 20, 39
+                        elseif speedLenght == 3 then
+                            backSpeed = nil
+                            fontPosX = 20
+                        end
+                        if backSpeed then
+                            renderFontDrawText(fontSpeed, backSpeed, posX + 90, posY + 25, 0xFF808080)
+                        end
+                        renderFontDrawText(fontSpeed, speed, (posX + 70) + fontPosX, posY + 25, 0xFFFFFFFF)
+                        renderFontDrawTextCenter(font, 'km/h', posX + (wBox / 2), posY + 65, 0xFFFFFFFF)
+                        -- // HP //
+                        local health = getCarHealth(storeCarCharIsInNoSave(PLAYER_PED))
+                        if car_info[1] then
+                            local health_max = car_info[1].car_health_max
+                            posLineHp = string.format("%.0f", health / string.format("%.1f", health_max / 90))
+                        else
+                            posLineHp = string.format("%.0f", health / 16.6)
+                        end
+                        
+                        renderDrawLine(posX + 18, posY + 45, posX + posLineHp, posY + 45, 15, 0xFFFF0000)
+                        renderFontDrawText(font, health, posX + 30, posY + 37, 0xFFFFFFFF)
+                        -- // DOOR //
+                        local res, carHandle = sampGetCarHandleBySampVehicleId(id)
+                        if res and id then
+                            local doorStatus = getCarDoorLockStatus(carHandle)
+                            renderFontDrawText(font, 'D', posX + 158, posY + 37, (doorStatus == 0 and 0xFF008000 or 0xFFFF0000))
+                        end
+                        -- // ENGINE //
+                        local engineState = isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED))
+                        renderFontDrawText(font, 'E', posX + 184, posY + 37, (engineState and 0xFF008000 or 0xFFFF0000))
+                        -- // KEY //
+                        if key_state ~= nil then
+                            renderFontDrawText(font, 'K', posX + 210, posY + 37, (key_state and 0xFF008000 or 0xFFFF0000))
+                        else
+                            renderFontDrawText(font, 'K', posX + 210, posY + 37, 0xFF808080)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function renderFontDrawTextCenter(fontCenter, text, x, y, color)
+    renderFontDrawText(fontCenter, text, x - renderGetFontDrawTextLength(fontCenter, text) / 2, y, color)
+end
 
 function checkServer(ip)
 	for k, v in pairs({
@@ -158,8 +267,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 end
                 sampSendDialogResponse(1163, 1, 5, -1)
             end
- 
-       
+
             if state == 2 then
                 sampSendDialogResponse(1163, 1, 0, -1)
                 state = 0
@@ -200,7 +308,6 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                 state = 0
             end
 
- 
         else
             if work then
                 sampSendDialogResponse(1163, 1, 0, -1)
@@ -214,10 +321,10 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
 
 
     if id == 162 then
-        if work and carid then
+        if (work and carid) or (key_state == nil and carid) then
             sampSendDialogResponse(162, 1, cars[carid]['id'], -1)
         end          
- 
+
         local i = 0
         local t = {}
         cars = {}
@@ -238,12 +345,14 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             elseif v:match('{......}%s.+%(%d+%)\t') then
                 t = {
                     name = v:match('{......}%s(.+)%(%d+%)\t'),
+                    id_car = v:match('{......}%s.+%((%d+)%)\t'),
                     id = i,
                     spawn = true
                 }
             elseif v:match('%s.+%(%d+%)\t') then
                 t = {
                     name = v:match('%s(.+)%(%d+%)\t'):gsub('^%s',''),
+                    id_car = v:match('%s.+%((%d+)%)\t'):gsub('^%s',''),
                     id = i,
                     spawn = true
                 }
@@ -262,9 +371,11 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
             if not work then
                 unloading_cars = false
             end
+        elseif information then
+            information = false
         else
             command = '/cars'; id_dialog = 162; cars_info = 'Мой транспорт'
-            if not target_window.v and not work then 
+            if not target_window.v and not work and not check_keystate then 
                 main_window.v = true; aboutmod, parkingmod, reloadmod, info_update = false 
             end
         end
@@ -307,10 +418,12 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
                     end
                     l = l + 1
                 end
-
+                if check_keystate then
+                    carname = cars[carid]['name']; state_spawn = cars[carid]['spawn']
+                end
                 sampSendDialogResponse(163, 1, 5, -1)
             end
- 
+
             if state == 1 then
                 sampSendDialogResponse(163, 1, 11, -1)
                 state = 0
@@ -393,7 +506,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         parkingstate = nil
         return false
     end
-    if id == 0 and style == 0 and title == '{BFBBBA}Информация' and (main_window.v or target_window.v) then
+    if id == 0 and style == 0 and title == '{BFBBBA}Информация' and (main_window.v or target_window.v) or check_keystate then
         car_info = {}
         local t = {
             carname = text:match('%{FFFFFF%}Транспорт%: %{73B461%}(.+)%{FFFFFF%}.+Владелец'),  
@@ -415,6 +528,7 @@ function sampev.onShowDialog(id, style, title, b1,b2,text)
         table.insert(car_info, t)
         servercarid = car_info[1].carname:match('%w+%[(%d+)%]')
         sampSendDialogResponse(id, 0, nil, nil)
+        check_keystate = false
         return false
     end
 end
@@ -424,12 +538,14 @@ function comma(n)
     return (tonumber(n) == 0 and 0 or (v1 .. (v2:reverse():gsub('(%d%d%d)','%1.'):reverse()) .. v3))
 end
 
-function refueling()
-    wait(100)
-    sampSendClickTextdraw(idtextdraw_change)
-    wait(130)
-    sampSendClickTextdraw(idtextdraw_fill)
-end
+local refueling = lua_thread.create_suspended(function()
+    while true do wait(0)
+        wait(228)
+        sampSendClickTextdraw(idtextdraw_change)
+        wait(228)
+        sampSendClickTextdraw(idtextdraw_fill)
+    end
+end)
 
 function sampev.onDisplayGameText(style, time, text)
     if style == 3 then
@@ -439,14 +555,53 @@ function sampev.onDisplayGameText(style, time, text)
     end
 end
 
+function sampev.onSendCommand(cmd)
+    if cmd == '/balon' then
+        clrBalon = {}
+        balon_stage = 1
+        balon_window.v = not balon_window.v
+    end
+end
+
 function sampev.onShowTextDraw(id, data)
+    if active_jack then
+        if data.text == 'INVENTORY' or data.text == '…H‹EHЏAP’' then
+            one_page = id + 2
+        end
+        textdrawInfo[#textdrawInfo+1] = {
+            ['id'] = id,
+            ['text'] = data.text,
+            ['model'] = data.modelId,
+            ['zoom'] = data.zoom
+        }
+        lua_thread.create(function()
+            if data.text == 'USE' or data.text == '…CЊO‡’€O‹AЏ’' and use_jack then
+                local clickID = id + 1
+                sampSendClickTextdraw(clickID)
+                use_jack = false
+                close_jack = true
+            end
+            if close_jack then
+                wait(111)
+                sampSendClickTextdraw(65535)
+                close_jack = false
+                active_jack = false
+            end
+        end)
+    end
+
     if data.text == 'DIESEL' and cfg.CheckBox.fuel then step = 1 end
     if data.text:find('%$%d+') and step == 1 then step = 2; idtextdraw_money = id end
     if data.text:find('LD%_BEAT%:chit') and data.lineWidth == 19 and step == 2 then step = 3; idtextdraw_change = id end
-    if data.text:find('FILL') and step == 3 then step = 4; idtextdraw_fill = id; sampSendClickTextdraw(idtextdraw_money); lua_thread.create(refueling) end
+    if data.text:find('FILL') and step == 3 then step = 4; idtextdraw_fill = id; sampSendClickTextdraw(idtextdraw_money); refueling:run() end
+
 end
- 
+
 function sampev.onServerMessage(color,text)
+    if text:find('%* Транспортное средство заправляется %(%( '.. sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) ..' %)%)') and step == 4 then refueling:terminate() end
+    if text:find('%[Информация%] {FFFFFF}Узнать цвета можно на форуме forum%.arizona%-rp%.com') then
+        return { color, '[Информация] {FFFFFF}Узнать цвета можно использовав команду - {FFFF00}/balon [без аргументов]' }
+    end
     if text:find('Нельзя ставить автозагрузку у более двух авто, сначала уберите автозагрузку с другого авто') then
         load_status = not load_status
         loads_status = not loads_status
@@ -461,39 +616,37 @@ function sampev.onServerMessage(color,text)
             text_load = 'Загружать при авторизации'
         end
     end
-    if text:find('вытащил%(а%) ключи из замка зажигания') or text:find('вставил%(а%) ключи в замок зажигания') then key_state = not key_state end
-    if text:find('Загрузить транспорт не удалось') then return false end
-    if CheckBox['enter'].v then
-        if text:find('Ключи не вставлены') then
-            lua_thread.create(function()
-                sampSendChat('/key'); wait(600); sampSendChat('/engine')
-            end)
-            return false 
-        end
-    end
-    if text:find('Вы не в своем авто') and (CheckBox['key'].v or CheckBox['enter'].v) then 
+    if text:find(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))).. ' заглушил%(а%) двигатель') and key_state then
         lua_thread.create(function()
-            CheckBox['key'].v = false
-            wait(300)
-            CheckBox['key'].v = true
+            wait(228)
+            sampSendChat('/key')
         end)
+    end
+    if text:find(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))).. ' вытащил%(а%) ключи из замка зажигания') or text:find(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))).. ' вставил%(а%) ключи в замок зажигания') then key_state = not key_state end
+    if text:find('Загрузить транспорт не удалось') then return false end
+    if text:find('Необходимо вставить ключи в зажигание') and CheckBox['enter'].v and itsmycar and not key_state then
+        sampSendChat('/key'); engine = true
         return false 
-    end    
+    end
+    if text:find(sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) .. ' вставил%(а%) ключи в замок зажигания') and engine then
+        engine = false;
+        lua_thread.create(function() wait(700); sampSendChat('/engine') end)
+    end 
     if text:find('Нельзя загружать более двух авто одновременно, сначало выгрузите одно авто') and working then
         working = false
     end
     if cfg.CheckBox.fuel then
-        if text:find('Данный тип топлива не подходит для вашего транспорта') then lua_thread.create(refueling) return false end
+        if text:find('Данный тип топлива не подходит для вашего транспорта') then return false end
         if text:find('Используйте курсор чтобы выбрать тип топлива и его кол%-во') or text:find('Вы можете заправить полный бак %- нажав на стоимость топлива') then return false end
     end
     if text:find('смотрит тех. паспорт.') then return false end
 end
- 
+
 function main()
     if not isSampLoaded() or not isSampfuncsLoaded() then return end
     while not isSampAvailable() do wait(100) end
 
-    local update_file = getWorkingDirectory() .. '\\mycar.json';
+    local update_file = getWorkingDirectory() .. '\\config\\mycar.json';
     downloadUrlToFile('https://raw.githubusercontent.com/sd-scripts/lua-scripts/main/mycar.json', update_file, function(id, status, p1, p2)
         if status == 6 then    
             local f = io.open(update_file, 'r+');
@@ -501,12 +654,19 @@ function main()
                 data = decodeJson(f:read('a*'));
                 f:close();
             end
+            os.remove(update_file)
         end
-        os.remove(update_file)
     end)
 
     if not doesFileExist('moonloader/config/MyCar.ini') then
         if inicfg.save(cfg, 'MyCar.ini') then print('{FF8C00}Предупреждение: {ffffff}файл конфигурации не найден. Создан файл: {00ff00}config\\MyCar.ini') end
+    end
+
+    if memory.tohex(getModuleHandle("samp.dll") + 0xBABE, 10, true ) == "E86D9A0A0083C41C85C0" then
+        sampIsLocalPlayerSpawned = function()
+            local res, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+            return sampGetGamestate() == 3 and res and sampGetPlayerAnimationId(id) ~= 0
+        end
     end
     
     while not sampIsLocalPlayerSpawned() do wait(120) end
@@ -527,41 +687,197 @@ function main()
             if not main_window.v then sampSendChat('/cars') else main_window.v = false end   
         end)
         bindKey = rkeys.registerHotKey(ActiveKey.v, true, function ()
-            if isCharInAnyCar(PLAYER_PED) then 
-                if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then
+            if isCharInAnyCar(PLAYER_PED) then
+                if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and pauseMenu() ~= 1 then
                     sampSendChat('/key')
                 end
             end   
         end)
+        bindJack = rkeys.registerHotKey(ActiveJack.v, true, function ()
+            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and isCharInAnyCar(PLAYER_PED) and pauseMenu() ~= 1 then
+                jack = true  
+            end
+        end)
         bindLock = rkeys.registerHotKey(ActiveLock.v, true, function ()
-            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() then
+            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and pauseMenu() ~= 1 then
                 sampSendChat('/lock')  
             end
         end)
         bindStyle = rkeys.registerHotKey(ActiveStyle.v, true, function ()
-            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and isCharInAnyCar(PLAYER_PED) then
+            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and isCharInAnyCar(PLAYER_PED) and pauseMenu() ~= 1 then
                 sampSendChat('/style')  
+            end
+        end)
+        bindLimit = rkeys.registerHotKey(ActiveLimit.v, true, function ()
+            if not sampIsChatInputActive() and not sampIsDialogActive() and not isSampfuncsConsoleActive() and isCharInAnyCar(PLAYER_PED) and pauseMenu() ~= 1 then
+                l_limit = not l_limit
+                sampSendChat('/limit ' .. (l_limit and 115 or 0))  
             end
         end)
     end
 
-    while true do
+    if doesFileExist('moonloader/mycar.json') then os.remove(getWorkingDirectory() .. '\\mycar.json') end
+
+    lua_thread.create(Speedometer)
+
+    while true do wait(0)
+        imgui.Process = main_window.v or target_window.v or balon_window.v
         target.check()
         vehicle.check()
-		if (isKeyJustPressed(keys.VK_F) or isKeyJustPressed(keys.VK_RETURN)) and CheckBox['key'].v then         
-            if isCharInAnyCar(playerPed) and not isSampfuncsConsoleActive() and not sampIsChatInputActive() and not sampIsDialogActive() and (string.format('%4.2f', getCarSpeed(storeCarCharIsInNoSave(playerPed))) < '30') then    
-                sampSendChat('/key')	
-            end  
-        end
-        if isKeyJustPressed(cfg.HotKey.interaction:match('%[(%d+)%]')) then
-            if target.state then 
-                target_window.v = true; sampSendChat('/cars')
-            elseif vehicle.state and not isSampfuncsConsoleActive() and not sampIsChatInputActive() and not sampIsDialogActive() then
-                target_window.v = true
+        if sampGetGamestate() == 3 and pauseMenu() ~= 1 then
+            if jack then
+                if sampIsDialogActive() then
+                  sampCloseCurrentDialogWithButton(0)
+                end
+                sampSendClickTextdraw(65535)
+                wait(355)
+                active_jack = true
+                textdrawInfo = {}
+                page = 1
+                sampSendChat('/invent')
+                jack = false
             end
+            if active_jack and textdrawInfo then
+                local next_page = true
+                wait(228)
+                for k,v in pairs(textdrawInfo) do
+                    if v['model'] == 19900 and v['zoom'] > 1 then
+                        next_page = false
+                        wait(228)
+                        sampSendClickTextdraw(v['id'])
+                        textdrawInfo = {}
+                        use_jack = true
+                        break
+                    end
+                end
+                if next_page then
+                    wait(228);
+                    if one_page > 2000 then
+                        if page < 3 then
+                            sampSendClickTextdraw(page + one_page);
+                            wait(600); 
+                            page = page + 1
+                        else
+                            sampSendClickTextdraw(65535)
+                            textdrawInfo = {}; 
+                            active_jack = false
+                            wait(123)
+                            sampAddChatMessage('[Ошибка] {FFFFFF}У вас нет домкрата.', 0xBE2D2D)
+                        end
+                    end
+                end
+            end
+            if encodeJson(cars) == '{}' then
+                information = true
+                sampSendChat('/cars')
+                wait(350)
+            else
+                if isCharInAnyCar(PLAYER_PED) then
+                    local car = getCarCharIsUsing(PLAYER_PED)
+                    local vehicle_id = select(2, sampGetVehicleIdByCarHandle(car))
+                    for i, v in ipairs(cars) do
+                        itsmycar = false
+                        if tonumber(v.id_car) == tonumber(vehicle_id) then
+                            itsmycar = true
+                            if key_state == nil then
+                                carid = i
+                                check_keystate = true
+                                sampSendChat('/cars')
+                                wait(350)
+                            end
+                            break
+                        end
+                    end
+                    veh = storeCarCharIsInNoSave(PLAYER_PED)
+                    if doesVehicleExist(veh) and not col_prim and not col_sec then
+                        col_prim, col_sec = getCarColours(veh)
+                    end
+                else
+                    veh, col_prim, col_sec = nil
+                end
+            end
+            if (isKeyJustPressed(keys.VK_F) or isKeyJustPressed(keys.VK_RETURN)) and CheckBox['key'].v and itsmycar and key_state then        
+                if isCharInAnyCar(playerPed) and not isSampfuncsConsoleActive() and not sampIsChatInputActive() and not sampIsDialogActive() and (string.format('%4.2f', getCarSpeed(storeCarCharIsInNoSave(playerPed))) < '30') then    
+                    sampSendChat('/key')	
+                end  
+            end
+            if isKeyJustPressed(cfg.HotKey.interaction:match('%[(%d+)%]')) and not isSampfuncsConsoleActive() and not sampIsChatInputActive() and not sampIsDialogActive() then
+                if target.state then 
+                    target_window.v = true; sampSendChat('/cars')
+                elseif vehicle.state then
+                    target_window.v = true
+                end
+            end
+
+            while isPauseMenuActive() do
+                if cursorEnabled then
+                    showCursor(false)
+                end
+                wait(100)
+            end
+    
+            -- MiddleButton Select by Cosmo
+            if isKeyDown(cfg.HotKey.mouse:match('%[(%d+)%]')) and isCharInAnyCar(PLAYER_PED) and not isSampfuncsConsoleActive() and not sampIsChatInputActive() and not sampIsDialogActive() and not target_window.v and cars then
+                local car = getCarCharIsUsing(PLAYER_PED)
+                local vehicle_id = select(2, sampGetVehicleIdByCarHandle(car))
+                for i, v in ipairs(cars) do
+                    if tonumber(v.id_car) == tonumber(vehicle_id) then
+                        cursorEnabled = not cursorEnabled
+                        if cursorEnabled then
+                            target.state = true
+                            target.time = os.clock() + 2
+                            choose_car, servercarid = v.name, v.id_car
+                        end
+                        showCursor(cursorEnabled)
+                        while isKeyDown(cfg.HotKey.mouse:match('%[(%d+)%]')) do wait(80) end
+                    end
+                end
+            end
+    
+            if cursorEnabled then
+                if sampGetCursorMode() == 0 then -- если курсора после cursorEnabled не появилось, включаем насильно :D
+                    showCursor(true)
+                end
+                local sx, sy = getCursorPos() -- координаты курсора на экране
+                local sw, sh = getScreenResolution() -- разрешение экрана
+                if sx >= 0 and sy >= 0 and sx < sw and sy < sh then -- если курсор не в нулевых координатах и не выходит за рамки экрана то..
+                    local posX, posY, posZ = convertScreenCoordsToWorld3D(sx, sy, 700.0) -- Создаёт точку в 3D-пространстве игры из координат курсора
+                    local camX, camY, camZ = getActiveCameraCoordinates() -- направление камеры по трем осям
+                    local result, colpoint = processLineOfSight(camX, camY, camZ, posX, posY, posZ, true, true, true, true, false, false, false) -- даёт знать на чём сейчас курсор (машина/пед/поверхность и т.п)
+                    if result and colpoint.entity ~= 0 then -- если курсор на хоть какой то поверхности то..
+                        if colpoint.entityType == 3 then -- Тип сущности: Ped
+                            local resb, idb = sampGetPlayerIdByCharHandle(getCharPointerHandle(colpoint.entity)) -- получаем ид через хэндл сущности (персонажа в данном случае)
+                            if sampIsPlayerConnected(idb) and getCharPointerHandle(colpoint.entity) ~= playerPed then -- если игрок существует и его хэндл отличается от нашего то..
+                                if distanceBetweenPlayer(idb) < 10 then
+                                    DrawText_char = "ЛКМ, чтобы выбрать игрока:\n"..sampGetPlayerNickname(idb).."["..idb.."]"
+                                    y_offset_char = sy - 35
+                                else
+                                    DrawText_char = "Этот игрок слишком далеко от вас"
+                                    y_offset_char = sy - 20
+                                end
+                                renderFontDrawText(font, DrawText_char, sx, y_offset_char, 0xFFFFFFFF)
+                            else
+                                renderFontDrawText(font, 'Это вы..', sx, sy - 20, 0x50FFFFFF)
+                            end
+                            if isKeyDown(keys.VK_LBUTTON) and getCharPointerHandle(colpoint.entity) ~= playerPed then -- если нажата СКМ и выбранный хэгдл не равен нашему то..
+                                if resb and distanceBetweenPlayer(idb) < 10 then -- если игрок больше чем в 20 метрах от вас, то не даст открыть меню (Некое Анти-ВХ)
+                                    choose_act = true;
+                                    target.i.id, target.i.name, target.i.lvl, target.i.car = idb, sampGetPlayerNickname(idb), sampGetPlayerScore(idb), true
+                                    target_window.v = true
+                                end
+                                setVirtualKeyDown(keys.VK_LBUTTON, true) -- я хуй знает, но без этого после второго вызова курсора он багается
+                                setVirtualKeyDown(keys.VK_LBUTTON, false) -- решил простой эмуляцией нажатия клавиши (ЛКМ) + еще курсор с этим центрируеца при вызове меню, удобно однако
+                                cursorEnabled = false -- офаем курсор
+                                showCursor(false)
+                            end
+                        else 
+                            renderFontDrawText(font, 'Наведите курсор на игрока', sx, sy - 35, 0x50FFFFFF)
+                        end
+                    end
+                end
+            end
+
         end
-        wait(0)
-        imgui.Process = main_window.v or target_window.v
     end
 end
 
@@ -597,7 +913,7 @@ end
 function target.check()
     if cfg.HotKey.interaction ~= '{}' then
         local result, ped = getCharPlayerIsTargeting(player)
-        if result and not target.state then 
+        if result and not target.state then
             local _, pID = sampGetPlayerIdByCharHandle(ped)
             local x, y, z = getCharCoordinates(ped) -- координаты выделенного игрока
             local x1, y1, z1 = getCharCoordinates(playerPed) -- координаты локального игрока
@@ -609,6 +925,34 @@ function target.check()
                 target.i.id, target.i.name, target.i.lvl = pID, sampGetPlayerNickname(pID), sampGetPlayerScore(pID)
                 target.state = true
                 target.time = os.clock() + 2
+            end
+        end
+        if not result and not cursorEnabled and not target.state and isCharInAnyCar(PLAYER_PED) and cars then
+            local car = getCarCharIsUsing(PLAYER_PED)
+			local vehicle_id = select(2, sampGetVehicleIdByCarHandle(car))
+            for i, v in ipairs(cars) do
+                if tonumber(v.id_car) == tonumber(vehicle_id) then
+                    for k, ped in ipairs(getAllChars()) do
+                        if ped ~= PLAYER_PED then
+                            local car_ped = isCharInAnyCar(ped)
+                            local res, pID = sampGetPlayerIdByCharHandle(ped)
+                            if res and not car_ped then
+                                local xp, yp, zp = getCharCoordinates(ped) -- Координаты ближайшего игрока
+                                local x, y, z = getCharCoordinates(PLAYER_PED) -- Координаты локального игрока
+                                local dist = getDistanceBetweenCoords3d(xp, yp, zp, x, y, z)
+                                if dist <= 3.0 then
+                                    if CheckBox['hint'].v then
+                                        sampCreate3dTextEx(777, '( '..table.concat(rkeys.getKeysName(ActiveInteraction.v), ' + ')..' )', 0xffA9A9A9, 0, 0, -0.75, 7, false, pID, -1)
+                                    end
+                                    choose_car, servercarid = v.name, v.id_car; choose_act = true;
+                                    target.i.id, target.i.name, target.i.lvl, target.i.car = pID, sampGetPlayerNickname(pID), sampGetPlayerScore(pID), true
+                                    target.state = true
+                                    target.time = os.clock() + 2
+                                end
+                            end
+                        end
+                    end
+                end
             end
         end
     end
@@ -627,13 +971,16 @@ end
 
 function onWindowMessage(msg, wparam, lparam)
     if msg == 0x100 or msg == 0x101 then
-        if (wparam == keys.VK_ESCAPE and (main_window.v or target_window.v)) and not isPauseMenuActive() then
+        if (wparam == keys.VK_ESCAPE and (main_window.v or target_window.v or balon_window.v)) and not isPauseMenuActive() and not isSampfuncsConsoleActive() then
             consumeWindowMessage(true, false)
             if msg == 0x101 then
-                main_window.v = false; target_window.v = false
+                main_window.v = false; target_window.v = false; balon_window.v = false
             end
         end
     end
+end
+function pauseMenu()
+    return memory.getuint8(0xBA6748 + 0x5C)
 end
 
 function sampGetVehicleModelById(vehicleId) -- функция получения имени транспорта по его локальному id
@@ -685,19 +1032,21 @@ function sampGetVehicleModelById(vehicleId) -- функция получения имени транспорт
         -- ARIZONA VEHICLES
         [612] = 'Mercedes GT63s AMG', [613] = 'Mercedes G63 AMG', [614] = 'Audi RS6', [662] = 'BMW X5', [663] = 'Chevrolet Corvette', 
         [665] = 'Chevrolet Cruze', [666] = 'Lexus LX', [667] = 'Porsche 911', [668] = 'Porsche Cayenne', [699] = 'Bentley Continental', 
-        [793] = 'BMW M8', [794] = 'Mercedes E63s AMG', [909] = 'Mercedes S63 Coupe AMG', [965] = 'Volkswagen Tuareg', [1194] = 'Lamborghini Urus',
-        [1195] = 'aqeight', [1196] = 'Dodge Challenger', [1197] = 'Acura NSX', [1198] = 'volvov', [1199] = 'Range Rover', 
-        [1200] = 'Honda Civic Type-R', [1201] = 'Lexus Sport-S', [1202] = 'Ford Mustang', [1203] = 'volvoxc', [1204] = 'Jaguar F-Pace',
-        [1205] = 'KIA Optima', [3155] = 'bmwzf', [3156] = 'kaban', [3157] = 'bmwxf', [3158] = 'Lexus RX',
+        [793] = 'BMW M8', [794] = 'Mercedes E63s AMG', [909] = 'Mercedes S63', [965] = 'Volkswagen Tuareg', [1194] = 'Lamborghini Urus',
+        [1195] = 'aqeight', [1196] = 'Dodge Challenger', [1197] = 'Acura NSX', [1198] = 'Volvo V60', [1199] = 'Range Rover', 
+        [1200] = 'Honda Civic Type-R', [1201] = 'Lexus Sport-S', [1202] = 'Ford Mustang', [1203] = 'Volvo XC90', [1204] = 'Jaguar F-Pace',
+        [1205] = 'KIA Optima', [3155] = 'BMW Z4 40i', [3156] = 'Mercedes-Benz S600', [3157] = 'BMW X5 E53', [3158] = 'Nissan Skyline GT-R',
         [3194] = 'Ducati Daivel', [3195] = 'Ducati Panigale', [3196] = 'Ducati Ducnaked', [3197] = 'Kawasaki Ninja ZX-10RR', [3198] = 'Western',
         [3199] = 'Rolls-Royce Cullinan', [3200] = 'Volkswagen Beetle', [3201] = 'Bugatti Divo', [3202] = 'Bugatti Chiron', [3203] = 'Fiat 500',
         [3204] = 'Mercedes-Benz GLS 2020', [3205] = 'Mercedes-AMG G65 AMG', [3206] = 'Lamborghini Aventador', [3207] = 'Range Rover SVA', [3208] = 'BMW 530i',
-        [3209] = 'mbw221', [3210] = 'Tesla Model X', [3211] = 'nisleaf', [3212] = 'Nissan Silvia', [3213] = 'Subaru Forester',
-        [3215] = 'Subaru Legasy', [3216] = 'Hyundai Sonata',  [3217] = 'BMW E38', [3218] = 'mbe55', [3219] = 'mbe500',
+        [3209] = 'Mercedes-Benz S600', [3210] = 'Tesla Model X', [3211] = 'Nissan Leaf', [3212] = 'Nissan Silvia', [3213] = 'Subaru Forester XT',
+        [3215] = 'Subaru Legasy', [3216] = 'Hyundai Sonata',  [3217] = 'BMW 750i', [3218] = 'Mercedes-Benz E55 AMG', [3219] = 'Mercedes-Benz E500',
         [3220] = 'jstorm', [3222] = 'lightmcq', [3223] = 'mater', [3224] = 'Buckingham', [3232] = 'Infinity FX 50',
         [3233] = 'Lexus RX 450h', [3234] = 'KIA Sportage', [3235] = 'Volkswagen Golf R', [3236] = 'Audi R8', [3237] = 'Toyota Camry XV40',
         [3238] = 'Toyota Camry XV70', [3239] = 'BMW M5 E60', [3240] = 'BMW M5 F90', [3245] = 'Mercedes Maybach S650', [3247] = 'Mercedes-Benz AMG GT',
-        [3248] = 'Porsche Panamera Turbo', [3251] = 'Volkswagen Passat', [3254] = 'Chevrolet Corvett 1980', [3266] = 'Dodge SRT', [3348] = 'Ford Mustang GT500'
+        [3248] = 'Porsche Panamera Turbo', [3251] = 'Volkswagen Passat', [3254] = 'Chevrolet Corvette', [3266] = 'Dodge Ram', [3348] = 'Ford Mustang Shelby GT500',
+        [3974] = 'Aston Martin DB5', [4542] = 'BMW M3 GTR', [4543] = 'Chevrolet Camaro', [4544] = 'Mazda RX-7', [4545] = 'Mazda RX-8',
+        [4546] = 'Mitsubishi Eclipse', [4547] = 'Ford Mustang 289', [4548] = 'Nissan 350Z'
     }
     return ovehicleNames[vehicleId] or 'Не определено'
 end
@@ -719,12 +1068,12 @@ function getClosestCarId() -- функция получения серверного id транспорта
     end
     return closestId or '000'
 end
- 
+
 function imgui.OnDrawFrame()
     if target_window.v then
         local sw, sh = getScreenResolution()
         imgui.SetNextWindowPos(imgui.ImVec2(sw / 2, sh / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(190, 228))
+        imgui.SetNextWindowSize(imgui.ImVec2(190, 238))
         imgui.Begin('##targetwindow',  target_window, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoTitleBar + imgui.WindowFlags.NoMove)
         imgui.SetCursorPosY(10)
         imgui.CenterTextColoredRGB('{808080}Меню взаимодействия')
@@ -754,21 +1103,119 @@ function imgui.OnDrawFrame()
                     if imgui.Button(u8'Загрузить', imgui.ImVec2(175,20)) then target_window.v = false; sampSendChat('/cars') end        
                 end
             else
-                imgui.SetCursorPosY(60)
-                if imgui.Button(u8'Передать ключи', imgui.ImVec2(175,25)) then sampSendChat('/givekey ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
-                if imgui.Button(u8'Показать паспорт', imgui.ImVec2(175,25)) then sampSendChat('/carpass ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
-                imgui.SetCursorPosY(140)
+                if not sell_car then
+                    imgui.SetCursorPosY(60)
+                    if imgui.Button(u8'Передать ключи', imgui.ImVec2(175,25)) then sampSendChat('/givekey ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
+                    if imgui.Button(u8'Показать паспорт', imgui.ImVec2(175,25)) then sampSendChat('/carpass ' ..target.i.id.. ' ' ..servercarid); choose_car = ''; target_window.v = false; choose_act = false end
+                    if target.i.car then
+                        if imgui.Button(u8'Продать игроку', imgui.ImVec2(175,25)) then 
+                            sell_car = true
+                        end
+                    end
+                else
+                    imgui.SetCursorPosY(60)
+                    imgui.CenterTextColoredRGB('{BE2D2D}Введите цену продажи:')
+                    imgui.InputText('##price car', price_car)
+                    if imgui.Button(u8'Продать', imgui.ImVec2(175,25)) then
+                        if tonumber(price_car.v) >= 10000 then
+                            target_window.v = false
+                            sampSendChat('/sellcarto ' ..target.i.id.. ' ' ..price_car.v)
+                            choose_act, sell_car = false; 
+                            choose_car = ''; price_car.v = ''
+                        else
+                            sampAddChatMessage('[Ошибка] {FFFFFF}Введите сумму более либо равную 10000$.', 0xBE2D2D)
+                        end
+                    end
+                end
+                imgui.SetCursorPosY((target.i.car and 170 or 150))
                 imgui.CenterTextColoredRGB('{808080}Выбранное т/c:')
                 imgui.CenterTextColoredRGB('{73B461}' ..choose_car)
                 imgui.ColorButton(64, 105, 15, 52, 84, 12, 77, 125, 17)
-                if imgui.Button(u8'Назад', imgui.ImVec2(175,20)) then choose_act = false; choose_car = '' end
+                if not target.i.car then
+                    if imgui.Button(u8'Назад', imgui.ImVec2(175,20)) then
+                        choose_act = false; choose_car = ''
+                    end
+                end
                 imgui.PopStyleColor(3)
             end
         end
-        imgui.SetCursorPosY(200)
+        imgui.SetCursorPosY(210)
 		imgui.ColorButton(112, 112, 112, 99, 99, 99, 130, 130, 130)
-        if imgui.Button(u8'Закрыть', imgui.ImVec2(175,20)) then target_window.v = false; choose_act = false; choose_car = '' end
+        if imgui.Button(u8'Закрыть', imgui.ImVec2(175,20)) then target_window.v = false; choose_act, sell_car = false; choose_car = ''; price_car.v = '' end
         imgui.PopStyleColor(3)
+        imgui.End()
+    end
+    if balon_window.v then
+        local sw, sh = getScreenResolution()
+        imgui.SetNextWindowPos(imgui.ImVec2(sw / 2, sh / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+        imgui.SetNextWindowSize(imgui.ImVec2(650, 700))
+        imgui.Begin(u8((veh and 'Визуальная смена цвета' or 'Выбор цвета балончика')),  balon_window, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoCollapse)
+
+        for i = 0, 255 do
+            imgui.PushStyleColor(imgui.Col.Button, imgui.ColorConvertU32ToFloat4(getCarTabColor(i)))
+            imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ColorConvertU32ToFloat4(getCarTabColor(i) - 5))
+            imgui.PushStyleColor(imgui.Col.ButtonHovered, imgui.ColorConvertU32ToFloat4(getCarTabColor(i) + 10))
+            if imgui.Button(tostring(i), imgui.ImVec2(35, 35)) then
+                if i ~= 0 then
+                    clrBalon[#clrBalon + 1] = tostring(i)
+                    balon_stage = balon_stage + 1
+                else
+                    sampAddChatMessage('[Ошибка] {FFFFFF}Используйте: /balon [цвет 1 > 0] [цвет 2 > 0]', 0xBE2D2D)
+                end
+            end
+            imgui.PopStyleColor(3)
+            local n = i + 1
+            if n % 16 > 0 then
+                imgui.SameLine()
+            end
+        end
+    
+        imgui.BeginChild('##clrBalon1', imgui.ImVec2(635, 40), true)
+            if veh then 
+                imgui.SetCursorPosY(4)
+                imgui.TextColoredRGB('{D3D3D3}Цвета транспорта:')
+                imgui.SetCursorPosX(40)
+                imgui.SetCursorPosY(20)
+                imgui.TextColoredRGB('{7CFC00}' ..col_prim.. ', ' ..col_sec)
+            end
+            imgui.SetCursorPosX(250)
+            imgui.SetCursorPosY(12)
+            imgui.TextColoredRGB((balon_stage == 1 and '{808080}Выберите первый цвет' or '{FFFFFF}Выбранный цвет №1: {228fff}' ..clrBalon[1]))
+            imgui.SameLine()
+
+            imgui.SetCursorPosX(475)
+            imgui.SetCursorPosY(6)
+            if balon_stage == 2 then
+                if imgui.Button(u8'Назад', imgui.ImVec2(153,30)) then
+                    balon_stage = 1
+                    clrBalon = {}
+                end
+            else
+                if veh and new_col_prim and new_col_sec then
+                    if imgui.Button(u8'Вернуть', imgui.ImVec2(153,30)) then
+                        colorVehicle(col_prim, col_sec)
+                        new_col_prim, new_col_sec = nil
+                        balon_stage = 1
+                        clrBalon = {}
+                    end
+                end
+            end
+
+        imgui.EndChild()
+
+        if balon_stage == 3 then
+            if veh then
+                colorVehicle(clrBalon[1], clrBalon[2])
+                new_col_prim, new_col_sec = clrBalon[1], clrBalon[2]
+                balon_stage = 1
+                clrBalon = {}
+            else
+                sampSendChat('/balon ' ..clrBalon[1].. ' ' ..clrBalon[2])
+                balon_stage = 1
+                clrBalon = {}
+                balon_window.v = false
+            end
+        end
         imgui.End()
     end
     if main_window.v then
@@ -780,20 +1227,21 @@ function imgui.OnDrawFrame()
  
         local sw, sh = getScreenResolution()
         imgui.SetNextWindowPos(imgui.ImVec2(sw / 2, sh / 2), imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(515, 485))
+        imgui.SetNextWindowSize(imgui.ImVec2(540, 485))
         imgui.Begin(u8('MyCar | ' ..cars_info),  main_window, imgui.WindowFlags.AlwaysAutoResize + imgui.WindowFlags.NoCollapse)
-        imgui.BeginChild('##panel_1', imgui.ImVec2(145, 430), true)
-            imgui.CenterText('Список авто:')
+        imgui.BeginChild('##panel_1', imgui.ImVec2(170, 430), true)
+            imgui.CenterText('Список транспорта:')
+            imgui.Spacing()
             for i, v in ipairs(cars) do
                 if not aboutmod and not info_update then
                     imgui.ColButton(cars[i]['spawn'])
-                    if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20)) and not work then
+                    if imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(155,25)) and not work then
                         carname = v['name']; car_info = {}; carid = i; sampSendChat(command); sampSendDialogResponse(id_dialog, 1, cars[carid]['id'], -1); state_spawn = cars[carid]['spawn']; text_loads = 'Получаем данные...'; text_load = 'Получаем данные...'
                     end    
                     imgui.PopStyleColor(3)
                 else
 					imgui.ColorButton(112, 112, 112, 99, 99, 99, 222, 2, 2)
-                    imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(130,20))
+                    imgui.Button(v['name'] .. '##' .. i, imgui.ImVec2(155,25))
                     imgui.PopStyleColor(3)
                 end
             end
@@ -818,26 +1266,31 @@ function imgui.OnDrawFrame()
 				imgui.ColorButton(35, 84, 25, 30, 70, 20, 48, 115, 34)
                 if imgui.Button(u8'Скачать', imgui.ImVec2(163,20)) then os.execute('explorer "https://www.blast.hk/threads/76299/"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере, где вы сможете скачать скрипт.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажав на кнопку, у вас откроется ссылка в браузере, где вы сможете скачать скрипт.'), 0.1)
                 imgui.SameLine()
                 if imgui.Button(u8'Назад', imgui.ImVec2(163, 20)) then info_update = false end
             end
             if aboutmod then
                 info_update = false
-                imgui.CenterTextColoredRGB('{6495ED}Дополнительные функции'); imgui.Separator()
-                if imgui.Checkbox(u8'Вставить ключи в замок при попытке завести т/с', CheckBox['enter']) then cfg.CheckBox.enter = CheckBox['enter'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас будет вставлять ключ в замок зажигания при попытке завести двигатель.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Достать ключ из замка зажигания при выходе из т/с', CheckBox['key']) then cfg.CheckBox.key = CheckBox['key'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас будет доставать ключи из замка зажигания при выходе из транспортного средства.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Выгружать весь транспорт при подключении', CheckBox['unloading']) then
+                imgui.SetCursorPosX(80); imgui.Text(fa.ICON_FA_ASTERISK); imgui.SameLine()
+                imgui.CenterTextColoredRGB('{6495ED} Дополнительные функции'); imgui.Separator()
+                if imadd.ToggleButton('##enter', CheckBox['enter']) then cfg.CheckBox.enter = CheckBox['enter'].v; inicfg.save(cfg, 'MyCar.ini') end
+                imgui.SameLine(); imgui.Text(u8' Автоматически вставлять ключи в замок')
+                imgui.Hint(u8('Скрипт за вас будет вставлять ключ в замок зажигания при попытке завести двигатель.'), 0.1)
+                if imadd.ToggleButton('##key', CheckBox['key']) then cfg.CheckBox.key = CheckBox['key'].v; inicfg.save(cfg, 'MyCar.ini') end
+                imgui.SameLine(); imgui.Text(u8' Вытащить ключ из замка зажигания')
+                imgui.Hint(u8('Скрипт за вас будет доставать ключи из замка зажигания при выходе из транспортного средства и когда вы заглушите двигатель.'), 0.1)
+                if imadd.ToggleButton('##unloading', CheckBox['unloading']) then
                     cfg.CheckBox.unloading = CheckBox['unloading'].v
                     inicfg.save(cfg, 'MyCar.ini') 
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('При входе в игру скрипт выгрузит все ваши транспортные средства с сервера.')) imgui.EndTooltip() end
-                if imgui.Checkbox(u8'Автоматическая заправка транспорта на АЗС', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.')) imgui.EndTooltip() end
-				
-                imgui.NewLine(); imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
+                imgui.SameLine(); imgui.Text(u8' Выгружать весь транспорт при подключении')
+                imgui.Hint(u8('При входе в игру скрипт выгрузит все ваши транспортные средства с сервера.'), 0.1)
+                if imadd.ToggleButton('##fuel', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
+                imgui.SameLine(); imgui.Text(u8' Автоматическая заправка транспорта на АЗС')
+                imgui.Hint(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.'), 0.1)
+				imgui.NewLine(); imgui.SetCursorPosX(100); imgui.Text(fa.ICON_FA_KEYBOARD); imgui.SameLine()
+                imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
                 if imadd.HotKey('##menu', ActiveMenus, tLastKeys, 80) then
                     rkeys.changeHotKey(bindMenu, ActiveMenus.v)
                     cfg.HotKey.main = encodeJson(ActiveMenus.v)
@@ -869,16 +1322,37 @@ function imgui.OnDrawFrame()
                     inicfg.save(cfg, 'MyCar.ini')
 				end
                 imgui.SameLine(); imgui.Text(u8' -   меню взаимодействия')
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Для взаимодействия с игроком - выделите его (ПКМ).\nЧтобы взаимодействовать с транспортом, подойдите к нему и нажмите клавишу.\nДля того, чтобы выключить эту функцию - удалите горячую клавишу (нажмите на неё, после Backspace).')) imgui.EndTooltip() end
-                imgui.SameLine(); imgui.SetCursorPosX(320)
-                if imgui.Checkbox('##hint',CheckBox['hint']) then cfg.CheckBox.hint = CheckBox['hint'].v; inicfg.save(cfg, 'MyCar.ini') end
-				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8((CheckBox['hint'].v and 'Отключить' or 'Включить').. ' подсказки при использовании функции (на персонаже/транспорте).')) imgui.EndTooltip() end
+                imgui.Hint(u8('Для взаимодействия с игроком - выделите его (ПКМ).\nЧтобы взаимодействовать с транспортом, подойдите к нему и нажмите клавишу.\nДля того, чтобы выключить эту функцию - удалите горячую клавишу (нажмите на неё, после Backspace).'), 0.1)
+                imgui.SameLine(); imgui.SetCursorPosX(310)
+                if imadd.ToggleButton('##hint',CheckBox['hint']) then cfg.CheckBox.hint = CheckBox['hint'].v; inicfg.save(cfg, 'MyCar.ini') end
+                imgui.Hint(u8((CheckBox['hint'].v and 'Отключить' or 'Включить').. ' подсказки при использовании функции (на персонаже/транспорте).'), 0.1)
+                if imadd.HotKey('##limit', ActiveLimit, tLastKeys, 80) then
+                    rkeys.changeHotKey(bindLimit, ActiveLimit.v)
+					cfg.HotKey.limit = encodeJson(ActiveLimit.v)
+                    inicfg.save(cfg, 'MyCar.ini')
+                end
+                imgui.SameLine(); imgui.Text(u8' -   ограничение скорости (/limit)')
+                imgui.Hint(u8('Включает/отключает лимит скорости, чтобы не попадаться на камерах (используемый лимит - 115 км/ч).'), 0.1)
+                if imadd.HotKey('##mouse', ActiveMouse, tLastKeys, 80) then
+					cfg.HotKey.mouse = encodeJson(ActiveMouse.v)
+                    inicfg.save(cfg, 'MyCar.ini')
+                end
+                imgui.SameLine(); imgui.Text(u8' -   активация курсора мыши')
+                imgui.Hint(u8('Активирует/деактивирует курсор мыши для вызова меню взаимодействия, когда вы находитесь в своём транспорте.'), 0.1)
+                if imadd.HotKey('##jack', ActiveJack, tLastKeys, 80) then
+                    rkeys.changeHotKey(bindJack, ActiveJack.v)
+					cfg.HotKey.jack = encodeJson(ActiveJack.v)
+                    inicfg.save(cfg, 'MyCar.ini')
+                end
+                imgui.SameLine(); imgui.Text(u8' -   использовать домкрат')
+                imgui.Hint(u8('Автоматически использует домкрат, доставая его из вашего инвентаря.\nДомкрат может лежать на любой странице в инвентаре.'), 0.1)
 				imgui.SetCursorPosY(335)
-                imgui.NewLine(); imgui.CenterTextColoredRGB('{A9A9A9}Обратная связь:'); imgui.Separator()
+                imgui.NewLine(); imgui.SetCursorPosX(105); imgui.Text(fa.ICON_FA_SATELLITE_DISH); imgui.SameLine()
+                imgui.CenterTextColoredRGB('{A9A9A9}Обратная связь:'); imgui.Separator()
 				imgui.ColorButton(11, 88, 230, 10, 80, 209, 12, 94, 245)
                 if imgui.Button(u8'ВКонтакте', imgui.ImVec2(107,20)) then os.execute('explorer "https://vk.com/sd_scripts"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере нашей группы ВКонтакте.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажав на кнопку, у вас откроется ссылка в браузере нашей группы ВКонтакте.'), 0.1)
                 imgui.SameLine()
                 
                 imgui.PushStyleColor(imgui.Col.Button, imgui.ImVec4(0.19, 0.22, 0.26, 1.0))
@@ -886,27 +1360,27 @@ function imgui.OnDrawFrame()
                 imgui.PushStyleColor(imgui.Col.ButtonActive, imgui.ImVec4(0.11, 0.14, 0.18, 1.0))
                 if imgui.Button('BlastHack', imgui.ImVec2(107,20)) then os.execute('explorer "https://www.blast.hk/threads/76299/"') end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, у вас откроется ссылка в браузере темы на портале BlastHack.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажав на кнопку, у вас откроется ссылка в браузере темы на портале BlastHack.'), 0.1)
 				imgui.SameLine()
 				imgui.ColorButton(35, 84, 25, 30, 70, 20, 48, 115, 34)
 				if imgui.Button(u8'Техподдержка', imgui.ImVec2(109,20)) then os.execute('explorer "https://vk.me/sd_scripts"') end
 				imgui.PopStyleColor(3)
-				if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на кнопку, вы попадёте в техподдержку (личные сообщения нашей группы ВКонтакте).')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажав на кнопку, вы попадёте в техподдержку (личные сообщения нашей группы ВКонтакте).'), 0.1)
 				imgui.Separator()
 				
                 imgui.SetCursorPosY(405)
 				imgui.ColorButton(120, 34, 34, 107, 30, 30, 135, 38, 38)
                 if imgui.Button(u8'Выключить', imgui.ImVec2(115,20)) then thisScript():unload() end
 				imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Выключает скрипт до перезагрузки (CTRL+R) или перезахода в игру.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Выключает скрипт до перезагрузки (CTRL+R) или перезахода в игру.'), 0.1)
                 imgui.SameLine()
                 imgui.ColorButton(16, 73, 148, 16, 65, 130, 21, 86, 171)
                 if imgui.Button(u8'Перезагрузить', imgui.ImVec2(115,20)) then thisScript():reload() end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Полная перезагрузка скрипта.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Полная перезагрузка скрипта.'), 0.1)
                 imgui.SameLine()
                 if imgui.Button(u8'Закрыть', imgui.ImVec2(93,20)) then aboutmod = false end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Закрывает меню настроек.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Закрывает меню настроек.'), 0.1)
             end
             if parkingmod then
                 imgui.SetCursorPosY(160)
@@ -932,7 +1406,7 @@ function imgui.OnDrawFrame()
             end
             if state_spawn and not parkingmod and not reloadmod and not aboutmod and not info_update then
                 imgui.BeginChild('##columns', imgui.ImVec2(330, 315), true)
-                    imgui.CenterTextColoredRGB('Паспорт транспорта {C0C0C0}' ..tostring(car_info[1] and car_info[1].carname or ''))  
+                    imgui.CenterTextColoredRGB('{228fff}Паспорт: {C0C0C0}' ..tostring(car_info[1] and car_info[1].carname or ''))  
                     imgui.Separator()
                     imgui.Columns(2)
                     local arrayText = {'Владелец', 'Посредник', 'Пробег', 'Налог', 'Штраф', 'Штраф за восстановление', 'Государственная стоимость', 'Государственный номер', 'Здоровье', 'Техническое состояние', 'Состояние масла', 'Страховка (на повреждение)', 'Страховка (на слёт)'}
@@ -945,44 +1419,45 @@ function imgui.OnDrawFrame()
                 imgui.EndChild()
                 imgui.Separator()
                 imgui.ColButton(door_state)
-                if imgui.Button(u8'DOOR', imgui.ImVec2(79,20)) then
+                if imgui.Button((door_state and fa.ICON_FA_UNLOCK or fa.ICON_FA_LOCK), imgui.ImVec2(79,20)) then
                     state = 2
                     work = true
                     sampSendChat(command)
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (door_state and 'закрыть' or 'открыть') .. ' двери вашего транспортного средства.\n\nP.S. Используйте только стоя рядом с вашим т/c или находясь в нём.')) imgui.EndTooltip() end 
+                imgui.Hint(u8('Нажмите, чтобы ' .. (door_state and 'закрыть' or 'открыть') .. ' двери вашего транспортного средства.\n\nP.S. Используйте только стоя рядом с вашим т/c или находясь в нём.'), 0.1)
                 imgui.SameLine()
                 imgui.ColButton(key_state)
-                if imgui.Button(u8'KEY', imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
+                if imgui.Button((key_state and fa.ICON_FA_KEY or fa.ICON_FA_BAN), imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
                     state = 3
                     work = true
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (key_state and 'вытащить ключи из замка' or 'вставить ключ в замок') .. ' зажигания вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажмите, чтобы ' .. (key_state and 'вытащить ключи из замка' or 'вставить ключ в замок') .. ' зажигания вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.'), 0.1)
                 imgui.SameLine()
                 imgui.ColButton(drive_state)
-                if imgui.Button((drive_state and 'Comfort' or 'Sport'), imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then
+                if imgui.Button((drive_state and fa.ICON_FA_CAR_SIDE or fa.ICON_FA_SHIPPING_FAST), imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then
                     state = 8
                     work = true
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Изменить режим езды [Sport, Comfort].\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Изменить режим езды [Sport, Comfort].\n\nP.S. Используйте только находясь в транспорте.'), 0.1)
                 imgui.SameLine()
                 imgui.ColButton(abs_state)
-                if imgui.Button(u8'ABS', imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
+                if imgui.Button((abs_state and fa.ICON_FA_CAR_ALT or fa.ICON_FA_CAR_CRASH), imgui.ImVec2(79,20)) and isCharInAnyCar(PLAYER_PED) and (tonumber(servercarid) == tonumber(select(2, sampGetVehicleIdByCarHandle(storeCarCharIsInNoSave(PLAYER_PED))))) then 
                     state = 9
                     work = true
                     sampSendChat(command) 
                 end
                 imgui.PopStyleColor(3)
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажмите, чтобы ' .. (abs_state and 'выключить' or 'включить') .. ' систему ABS вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.')) imgui.EndTooltip() end
+                imgui.Hint(u8('Нажмите, чтобы ' .. (abs_state and 'выключить' or 'включить') .. ' систему ABS вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.'), 0.1)
                 imgui.Separator()
-                if imgui.Button(u8'Припарковать', imgui.ImVec2(107,20)) then 
+                if imgui.Button(u8'Припарковать', imgui.ImVec2(107,20)) and isCharInAnyCar(PLAYER_PED) then 
                     parkingmod = true 
                 end
+                imgui.Hint(u8'Функционал данной кнопки доступен только в машине.', 0.1)
                 imgui.SameLine()
                 if imgui.Button(u8'Найти', imgui.ImVec2(107,20)) then 
                     state = 5
@@ -1006,14 +1481,14 @@ function imgui.OnDrawFrame()
                     work = true
                     sampSendChat(command) 
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8(infotooltip)) imgui.EndTooltip() end
+                imgui.Hint(u8(infotooltip), 0.1)
                 imgui.SameLine()
                 if imgui.Button(u8'Заспавнить', imgui.ImVec2(89,20)) then
                     state = 10
                     work = true
                     sampSendChat(command) 
                 end
-                if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Ваше транспортное средство переместится на место парковки.\nСтоимость услуги: 1.000$.')) imgui.EndTooltip() end
+                imgui.Hint(u8'Ваше транспортное средство переместится на место парковки.\nСтоимость услуги: 1.000$.', 0.1)
                 imgui.SameLine()
                 if command == '/cars' then
                     if imgui.Button(u8'Выгрузить', imgui.ImVec2(89,20)) then
@@ -1028,31 +1503,31 @@ function imgui.OnDrawFrame()
                         work = true; state = 11; sampSendChat('/cars')
                     end
                     imgui.PopStyleColor(3)
-                    if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажав на эту кнопку, можно изменить статус загрузки транспорта сервером.\nВ данный момент транпорт ' ..(loads_status and 'будет' or 'не будет') .. ' загружен при входе на сервер.')) imgui.EndTooltip() end
+                    imgui.Hint(u8('Нажав на эту кнопку, можно изменить статус загрузки транспорта сервером.\nВ данный момент транпорт ' ..(loads_status and 'будет' or 'не будет') .. ' загружен при входе на сервер.'), 0.1)
                 end
             elseif not state_spawn and not parkingmod and not reloadmod and not aboutmod and not info_update then
                 imgui.SetCursorPosY(180)
                 if carid then
                     if not work then
+                        imgui.SetCursorPosY(160)
                         if cars[carid].pfine then
-                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} на штрафстоянке.')
+                            imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ff0000} на штрафстоянке.')
                         else
-                            imgui.SetCursorPosY(160)
                             imgui.CenterTextColoredRGB('Ваш транспорт {ffff00}' ..carname.. '{ffffff} не загружен.')
-                            if imgui.Button(u8'Загрузить', imgui.ImVec2(335,25)) then
-                                work = true
-                                sampSendChat('/cars')
-                                working = true
-                            end
-                            if text_load == 'Загружать при авторизации' then load_status = false else load_status = true end
-                            imgui.ColButton(load_status)
-                            if imgui.Button(u8(text_load), imgui.ImVec2(335,25)) then
-                                work = true
-                                sampSendChat('/cars')
-                                loading = true
-                            end
-                            imgui.PopStyleColor(3)
                         end
+                        if imgui.Button(u8'Загрузить', imgui.ImVec2(335,25)) then
+                            work = true
+                            sampSendChat('/cars')
+                            working = true
+                        end
+                        if text_load == 'Загружать при авторизации' then load_status = false else load_status = true end
+                        imgui.ColButton(load_status)
+                        if imgui.Button(u8(text_load), imgui.ImVec2(335,25)) then
+                            work = true
+                            sampSendChat('/cars')
+                            loading = true
+                        end
+                        imgui.PopStyleColor(3)
                     else
                         if not loading then
                             imgui.SetCursorPosY(150)
@@ -1080,15 +1555,15 @@ function imgui.OnDrawFrame()
             if imgui.IsItemClicked() then
                 info_update = true
             end
-            if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Нажми, чтобы узнать информацию об обновлении.')) imgui.EndTooltip() end
+            imgui.Hint(u8('Нажми, чтобы узнать информацию об обновлении.'), 0.1)
             imgui.SameLine()
         end
-        imgui.SetCursorPosX(345)
+        imgui.SetCursorPosX(370)
         imgui.TextColoredRGB('{4169E1}S&D Scripts™')
         if imgui.IsItemClicked() then
             aboutmod = true
         end
-        if imgui.IsItemHovered() then imgui.BeginTooltip() imgui.TextUnformatted(u8('Дополнительные настройки скрипта.')) imgui.EndTooltip() end
+        imgui.Hint(u8('Дополнительные настройки скрипта.'), 0.1)
         imgui.SameLine()
         imgui.TextColoredRGB(' {ffffff}Version: {808080}' ..thisScript().version)
         imgui.End()
@@ -1104,7 +1579,7 @@ function onReceivePacket(id)
         end)
     end
 end
- 
+
 function apply_custom_style()
     imgui.SwitchContext()
     local style = imgui.GetStyle()
@@ -1170,6 +1645,22 @@ function apply_custom_style()
     colors[clr.ModalWindowDarkening]   = ImVec4(0.26, 0.26, 0.26, 0.60);
 end
 
+function colorVehicle(clr_1, clr_2)
+    local res, vid = sampGetVehicleIdByCarHandle(veh)
+    local vehpool = sampGetVehiclePoolPtr()
+    local pool = sampGetVehiclePoolPtr()
+    if getStructElement(pool, 0x3074 + vid * 4, 1) == 1 then
+        local this = ffi.cast('void*', getStructElement(pool, 0x1134 + vid * 4, 4))
+        ffi.cast('void(__thiscall*)(void* this, int c1, int c2)', sampGetBase() + 0xB0D90)(this, tonumber(clr_1), tonumber(clr_2))
+    end
+end
+
+function getCarTabColor(id)
+	local col_table = memory.getuint32(0x4C8390, true)
+	local clr = memory.getuint32(col_table + (id * 4))
+	return clr
+end
+
 function onScriptTerminate(LuaScript, quitGame)
     if LuaScript == thisScript() then
         if imgui then imgui.ShowCursor = false; showCursor(false) end
@@ -1179,6 +1670,30 @@ end
 function imgui.CenterColumnText(text)
     imgui.SetCursorPosX((imgui.GetColumnOffset() + (imgui.GetColumnWidth() / 2)) - imgui.CalcTextSize(text).x / 2)
     imgui.Text(text)
+end
+
+function imgui.Hint(text, delay, action)
+    if imgui.IsItemHovered() then
+        if go_hint == nil then go_hint = os.clock() + (delay and delay or 0.0) end
+        local alpha = (os.clock() - go_hint) * 5
+        if os.clock() >= go_hint then
+            imgui.PushStyleVar(imgui.StyleVar.WindowPadding, imgui.ImVec2(10, 10))
+            imgui.PushStyleVar(imgui.StyleVar.Alpha, (alpha <= 1.0 and alpha or 1.0))
+                imgui.PushStyleColor(imgui.Col.PopupBg, imgui.ImVec4(0.11, 0.11, 0.11, 1.00))
+                    imgui.BeginTooltip()
+                    imgui.PushTextWrapPos(450)
+                    imgui.TextColored(imgui.GetStyle().Colors[imgui.Col.ButtonHovered], fa.ICON_FA_INFO_CIRCLE .. u8' Подсказка:')
+                    imgui.TextUnformatted(text)
+                    if action ~= nil then
+                        imgui.TextColored(imgui.GetStyle().Colors[imgui.Col.TextDisabled], '\n'..action)
+                    end
+                    if not imgui.IsItemVisible() and imgui.GetStyle().Alpha == 1.0 then go_hint = nil end
+                    imgui.PopTextWrapPos()
+                    imgui.EndTooltip()
+                imgui.PopStyleColor()
+            imgui.PopStyleVar(2)
+        end
+    end
 end
 
 function imgui.ColorButton(p1, p2, p3, p4, p5, p6, p7, p8, p9)
@@ -1305,6 +1820,18 @@ function imgui.TextColoredRGB(text)
     end
 
     render_text(text)
+end
+
+function distanceBetweenPlayer(playerId)
+    if sampIsPlayerConnected(playerId) then
+        local result, ped = sampGetCharHandleBySampPlayerId(playerId)
+        if result and doesCharExist(ped) then
+            local myX, myY, myZ = getCharCoordinates(playerPed)
+            local playerX, playerY, playerZ = getCharCoordinates(ped)
+            return math.floor(getDistanceBetweenCoords3d(myX, myY, myZ, playerX, playerY, playerZ))
+        end
+    end
+    return nil
 end
 
 apply_custom_style()
