@@ -1,7 +1,7 @@
 script_author('S&D Scripts')
 script_name('MyCar')
-script_version('1.4.0')
-script_version_number(15) 
+script_version('1.4.1')
+script_version_number(16) 
 
 local sampev      =   require 'samp.events'
 local imgui       =   require 'imgui'
@@ -36,6 +36,8 @@ local price_car = imgui.ImBuffer('', 256)
 local work = false
 local working = false
 local unloading_cars = false
+local itsmycar = false
+local start_cars = true
 local text_loads = 'Получаем данные...'
 local text_load = 'Получаем данные...'
 local state = 0
@@ -53,7 +55,8 @@ local cfg = inicfg.load({
         unloading = false,
         fuel = true,
         key = true,
-        hint = true
+        hint = true,
+        speedometer = true
     },
     HotKey = {
         lock = '[76]',
@@ -72,7 +75,8 @@ local CheckBox = {
     ['unloading'] = imgui.ImBool(cfg.CheckBox.unloading),
     ['fuel'] = imgui.ImBool(cfg.CheckBox.fuel),
     ['key'] = imgui.ImBool(cfg.CheckBox.key),
-    ['hint'] = imgui.ImBool(cfg.CheckBox.hint)
+    ['hint'] = imgui.ImBool(cfg.CheckBox.hint),
+    ['speedometer'] = imgui.ImBool(cfg.CheckBox.speedometer)
 }
 
 local ActiveMenus = {
@@ -116,7 +120,7 @@ end
 function Speedometer()
     while true do wait(0)
         if isCharInAnyCar(PLAYER_PED) and pauseMenu() ~= 1 then
-            if not stop_render then
+            if CheckBox['speedometer'].v then
                 local carhandle = storeCarCharIsInNoSave(PLAYER_PED)
                 local idcar = getCarModel(carhandle)
                 local AirVehicle = {417, 425, 447, 469, 487, 488, 497, 548, 563, 3224}
@@ -130,7 +134,11 @@ function Speedometer()
                         renderDrawBoxWithBorder(posX, posY, wBox, hBox, 0xFF696969, 5, 0xFFC0C0C0)
                         renderDrawLine(posX + 20, posY + 45, posX + 255, posY + 45, 40, 0xAAAAAAAA)
                         renderDrawLine(posX + 18, posY + 45, posX + 92, posY + 45, 17, 0xFFFFFFFF) -- // Полоска жизней
-                        renderDrawLine(posX + 163, posY + 45, posX + 235, posY + 45, 15, 0xFFFFFFFF)
+                        local posXLine = 163
+                        for i = 1, 4 do
+                            renderDrawLine(posX + posXLine, posY + 45, posX + (posXLine + 15), posY + 45, 15, 0xFFFFFFFF)
+                            posXLine = posXLine + 18
+                        end
                         renderFontDrawTextCenter(font, model .. '(' ..id.. ')', posX + (wBox / 2), posY + 6, 0xFFFFFFFF)
                         -- // SPEED //
                         local speedLenght = string.len(speed)
@@ -151,15 +159,23 @@ function Speedometer()
                         renderFontDrawTextCenter(font, 'km/h', posX + (wBox / 2), posY + 65, 0xFFFFFFFF)
                         -- // HP //
                         local health = getCarHealth(storeCarCharIsInNoSave(PLAYER_PED))
-                        if car_info[1] then
-                            local health_max = car_info[1].car_health_max
-                            posLineHp = string.format("%.0f", health / string.format("%.1f", health_max / 90))
+                        if health >= 400 and health ~= 0 then
+                            if car_info[1] then
+                                local health_max = car_info[1].car_health_max
+                                posLineHp = string.format("%.0f", health / string.format("%.1f", health_max / 90))
+                            else
+                                if health <= 1500 then
+                                    posLineHp = string.format("%.0f", health / 16.6)
+                                else
+                                    posLineHp = string.format(health / string.format("%.1f", health / 90))
+                                end
+                            end
                         else
-                            posLineHp = string.format("%.0f", health / 16.6)
+                            posLineHp = (health == 0 and 18 or 21)
                         end
                         
                         renderDrawLine(posX + 18, posY + 45, posX + posLineHp, posY + 45, 15, 0xFFFF0000)
-                        renderFontDrawText(font, health, posX + 30, posY + 37, 0xFFFFFFFF)
+                        renderFontDrawText(font, health, posX + 45 - renderGetFontDrawTextLength(font, health) / 2, posY + 37, 0xFFFFFFFF)
                         -- // DOOR //
                         local res, carHandle = sampGetCarHandleBySampVehicleId(id)
                         if res and id then
@@ -168,12 +184,18 @@ function Speedometer()
                         end
                         -- // ENGINE //
                         local engineState = isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED))
-                        renderFontDrawText(font, 'E', posX + 184, posY + 37, (engineState and 0xFF008000 or 0xFFFF0000))
+                        renderFontDrawText(font, 'E', posX + 176, posY + 37, (engineState and 0xFF008000 or 0xFFFF0000))
                         -- // KEY //
                         if key_state ~= nil then
-                            renderFontDrawText(font, 'K', posX + 210, posY + 37, (key_state and 0xFF008000 or 0xFFFF0000))
+                            renderFontDrawText(font, 'K', posX + 193, posY + 37, (key_state and 0xFF008000 or 0xFFFF0000))
                         else
-                            renderFontDrawText(font, 'K', posX + 210, posY + 37, 0xFF808080)
+                            renderFontDrawText(font, 'K', posX + 193, posY + 37, 0xFF808080)
+                        end
+                        -- // STYLE //
+                        if drive_state ~= nil then
+                            renderFontDrawText(font, 'S', posX + 211, posY + 37, (drive_state and 0xFFFF0000 or 0xFF008000))
+                        else
+                            renderFontDrawText(font, 'S', posX + 211, posY + 37, 0xFF808080)
                         end
                     end
                 end
@@ -598,6 +620,23 @@ function sampev.onShowTextDraw(id, data)
 end
 
 function sampev.onServerMessage(color,text)
+
+    if start_cars and text:find('%[Ошибка%] %{FFFFFF%}У вас нет личного транспорта%!') then
+        start_cars = false; return false
+    end
+
+    -- local model_name = text:match('%[Информация%] %{......%}Вы начали тест%-драйв автомобиля %{......%}(.+)%s%[модель%: %d+%]')
+    -- if model_name then
+    --     lua_thread.create(function()
+    --         wait(3000)
+    --         local model_id = getCarModel(storeCarCharIsInNoSave(PLAYER_PED))
+    --         local text_return = "[" ..model_id.. "] = '"..model_name.."',"
+    --         sampAddChatMessage(text_return,-1)
+    --         setClipboardText(text_return)
+    --     end)
+    -- end
+
+    if text:find('Чтобы завести двигатель введите %{DFCFCF%}%/engine%{DC4747%} или нажмите %{DFCFCF%}N') or text:find('Чтобы включить радио используйте кнопку %{DFCFCF%}R') or text:find('Для управления поворотниками используйте клавиши%: %{DFCFCF%}%(Q%/E%)') or text:find('В транспорте может присутствует радио%{DFCFCF%} %[%/radio%]') then return false end
     if text:find('%* Транспортное средство заправляется %(%( '.. sampGetPlayerNickname(select(2, sampGetPlayerIdByCharHandle(PLAYER_PED))) ..' %)%)') and step == 4 then refueling:terminate() end
     if text:find('%[Информация%] {FFFFFF}Узнать цвета можно на форуме forum%.arizona%-rp%.com') then
         return { color, '[Информация] {FFFFFF}Узнать цвета можно использовав команду - {FFFF00}/balon [без аргументов]' }
@@ -767,7 +806,7 @@ function main()
                     end
                 end
             end
-            if encodeJson(cars) == '{}' then
+            if encodeJson(cars) == '{}' and start_cars then
                 information = true
                 sampSendChat('/cars')
                 wait(350)
@@ -775,17 +814,18 @@ function main()
                 if isCharInAnyCar(PLAYER_PED) then
                     local car = getCarCharIsUsing(PLAYER_PED)
                     local vehicle_id = select(2, sampGetVehicleIdByCarHandle(car))
-                    for i, v in ipairs(cars) do
-                        itsmycar = false
-                        if tonumber(v.id_car) == tonumber(vehicle_id) then
-                            itsmycar = true
-                            if key_state == nil then
-                                carid = i
-                                check_keystate = true
-                                sampSendChat('/cars')
-                                wait(350)
+                    if not itsmycar then
+                        for i, v in ipairs(cars) do
+                            if tonumber(v.id_car) == tonumber(vehicle_id) then
+                                itsmycar = true
+                                if key_state == nil then
+                                    carid = i
+                                    check_keystate = true
+                                    sampSendChat('/cars')
+                                    wait(350)
+                                end
+                                break
                             end
-                            break
                         end
                     end
                     veh = storeCarCharIsInNoSave(PLAYER_PED)
@@ -793,6 +833,7 @@ function main()
                         col_prim, col_sec = getCarColours(veh)
                     end
                 else
+                    itsmycar = false
                     veh, col_prim, col_sec = nil
                 end
             end
@@ -1046,7 +1087,12 @@ function sampGetVehicleModelById(vehicleId) -- функция получения имени транспорт
         [3238] = 'Toyota Camry XV70', [3239] = 'BMW M5 E60', [3240] = 'BMW M5 F90', [3245] = 'Mercedes Maybach S650', [3247] = 'Mercedes-Benz AMG GT',
         [3248] = 'Porsche Panamera Turbo', [3251] = 'Volkswagen Passat', [3254] = 'Chevrolet Corvette', [3266] = 'Dodge Ram', [3348] = 'Ford Mustang Shelby GT500',
         [3974] = 'Aston Martin DB5', [4542] = 'BMW M3 GTR', [4543] = 'Chevrolet Camaro', [4544] = 'Mazda RX-7', [4545] = 'Mazda RX-8',
-        [4546] = 'Mitsubishi Eclipse', [4547] = 'Ford Mustang 289', [4548] = 'Nissan 350Z'
+        [4546] = 'Mitsubishi Eclipse', [4547] = 'Ford Mustang 289', [4548] = 'Nissan 350Z', [4774] = 'BMW 760li', [4775] = 'Aston Martin One-77',
+        [4776] = 'Bentley Balacar', [4777] = 'Bentley Bentayga', [4778] = 'BMW M4 Competition 2021', [4779] = 'BMW i8', [4780] = 'Aston Martin Genesis G90',
+        [4781] = 'Honda Integra Type-R', [4782] = 'BMW M3', [4783] = 'Mercedes-Benz S500 4Matic', [4784] = 'Ford Raptor', [4785] = 'Ferrari J50',
+        [4786] = 'Mercedes-Benz SLR McLaren', [4787] = 'Subaru BRZ', [4788] = 'Lada Vesta SW Cross', [4789] = 'Porsche Taycan', [4790] = 'Ferrari Spider',
+        [4791] = 'UAZ Patriot', [4792] = 'Волга 3110', [4793] = 'Mercedes-Benz X Class', [4794] = 'Jaguar XF', [4796] = 'Dodge Grand Caravan',
+        [4797] = 'Dodge Charger', [4798] = 'Ford Explorer', [4799] = 'Ford F150', [4802] = 'Lamborghini Cantenario', [4803] = 'Ferrari 812 Superfast'
     }
     return ovehicleNames[vehicleId] or 'Не определено'
 end
@@ -1289,7 +1335,9 @@ function imgui.OnDrawFrame()
                 if imadd.ToggleButton('##fuel', CheckBox['fuel']) then cfg.CheckBox.fuel = CheckBox['fuel'].v; inicfg.save(cfg, 'MyCar.ini') end
                 imgui.SameLine(); imgui.Text(u8' Автоматическая заправка транспорта на АЗС')
                 imgui.Hint(u8('Скрипт за вас заправит до полного бака ваше транспортное средство на автозаправочной станции.'), 0.1)
-				imgui.NewLine(); imgui.SetCursorPosX(100); imgui.Text(fa.ICON_FA_KEYBOARD); imgui.SameLine()
+                if imadd.ToggleButton('##speedometer', CheckBox['speedometer']) then cfg.CheckBox.speedometer = CheckBox['speedometer'].v; inicfg.save(cfg, 'MyCar.ini') end
+                imgui.SameLine(); imgui.Text(u8' Спидометр при использовании вертолётов')
+				imgui.SetCursorPosX(100); imgui.Text(fa.ICON_FA_KEYBOARD); imgui.SameLine()
                 imgui.CenterTextColoredRGB('{73B461}Горячие клавиши'); imgui.Separator()
                 if imadd.HotKey('##menu', ActiveMenus, tLastKeys, 80) then
                     rkeys.changeHotKey(bindMenu, ActiveMenus.v)
@@ -1386,11 +1434,19 @@ function imgui.OnDrawFrame()
                 imgui.SetCursorPosY(160)
 				imgui.CenterTextColoredRGB('{808080}Выберите, где припарковать ваш транспорт.')
                 if imgui.Button(u8'Припарковать в этом месте', imgui.ImVec2(335,25)) then
-                    parkingmod = false
-                    parkingstate = 0
-                    state = 4
-                    work = true
-                    sampSendChat(command)
+                    if isCharInAnyCar(PLAYER_PED) then
+                        if itsmycar then
+                            parkingmod = false
+                            parkingstate = 0
+                            state = 4
+                            work = true
+                            sampSendChat(command)
+                        else
+                            sampAddChatMessage('[Ошибка] {FFFFFF}Это не ваш транспорт.', 0xBE2D2D)
+                        end
+                    else
+                        sampAddChatMessage('[Ошибка] {FFFFFF}Вы должны находиться в своём транспорте.', 0xBE2D2D)
+                    end
                 end
                 if imgui.Button(u8'Вернуть на стандартную парковку', imgui.ImVec2(335,25)) then
                     parkingmod = false
@@ -1454,7 +1510,7 @@ function imgui.OnDrawFrame()
                 imgui.PopStyleColor(3)
                 imgui.Hint(u8('Нажмите, чтобы ' .. (abs_state and 'выключить' or 'включить') .. ' систему ABS вашего транспортного средства.\n\nP.S. Используйте только находясь в транспорте.'), 0.1)
                 imgui.Separator()
-                if imgui.Button(u8'Припарковать', imgui.ImVec2(107,20)) and isCharInAnyCar(PLAYER_PED) then 
+                if imgui.Button(u8'Припарковать', imgui.ImVec2(107,20)) then 
                     parkingmod = true 
                 end
                 imgui.Hint(u8'Функционал данной кнопки доступен только в машине.', 0.1)
